@@ -28,7 +28,7 @@ jobs:
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           DEPLOYED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          printf '{"build":"%s","deployedAt":"%s"}\n' "$SHORT_SHA" "$DEPLOYED_AT" > version.json
+          printf '{"build":"%s","deployedAt":"%s","channel":"unified"}\n' "$SHORT_SHA" "$DEPLOYED_AT" > version.json
           cat version.json
 
       - name: Generate js/config.js

@@ -4,8 +4,16 @@
   const TOTAL_POINTS = 10;
   const MAX_FIELD_VALUE = 5;
   const RELOAD_DELAY_MS = 4000;
-  const VERSION_STORAGE_KEY = "recensioni-trash-last-seen-build";
+  const VERSION_STORAGE_KEY_MOBILE = "recensioni-trash-last-seen-build-mobile";
+  const VERSION_STORAGE_KEY_DESKTOP = "recensioni-trash-last-seen-build-desktop";
   const VERSION_POLL_MS = 60000;
+  const DEVICE_BREAKPOINT_PX = 768;
+  const DEVICE_NARROW_TOUCH_PX = 1024;
+
+  const VERSION_BANNER_COPY = {
+    mobile: "Hai il telefono in mano? Aggiorna prima che Gianna parta.",
+    desktop: "Sul PC c'è roba nuova. Hard refresh o resti indietro.",
+  };
 
   const POINT_FIELDS = ["food", "guide", "hospitality"];
 
@@ -41,6 +49,7 @@
     isSubmitting: false,
     loadedBuild: null,
     pendingBuild: null,
+    deviceType: null,
   };
 
   const els = {};
@@ -69,6 +78,7 @@
     els.trashModalScores = $("trash-modal-scores");
     els.trashModalOk = $("trash-modal-ok");
     els.versionBanner = $("version-banner");
+    els.versionBannerCopy = $("version-banner-copy");
     els.versionBannerRefresh = $("version-banner-refresh");
     els.versionBannerDismiss = $("version-banner-dismiss");
 
@@ -740,9 +750,65 @@
     }
   }
 
+  function getDeviceType() {
+    const width = window.innerWidth;
+    const hasTouch =
+      "ontouchstart" in window ||
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+    const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const mobileUa = /Android|webOS|iPhone|iPad|iPod|Windows Phone|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+
+    if (width <= DEVICE_BREAKPOINT_PX) {
+      return "mobile";
+    }
+
+    if (hasTouch && width <= DEVICE_NARROW_TOUCH_PX && (coarsePointer || mobileUa)) {
+      return "mobile";
+    }
+
+    return "desktop";
+  }
+
+  function getVersionStorageKey() {
+    return getDeviceType() === "mobile" ? VERSION_STORAGE_KEY_MOBILE : VERSION_STORAGE_KEY_DESKTOP;
+  }
+
+  function updateVersionBannerCopy() {
+    if (!els.versionBannerCopy) return;
+    const device = state.deviceType || getDeviceType();
+    els.versionBannerCopy.textContent = VERSION_BANNER_COPY[device] || VERSION_BANNER_COPY.desktop;
+  }
+
+  function applyDeviceClass() {
+    const device = getDeviceType();
+    const changed = state.deviceType !== device;
+    state.deviceType = device;
+
+    document.body.classList.remove("device-mobile", "device-desktop");
+    document.body.classList.add(device === "mobile" ? "device-mobile" : "device-desktop");
+
+    updateVersionBannerCopy();
+
+    return changed;
+  }
+
+  function initDeviceDetection() {
+    applyDeviceClass();
+
+    let resizeTimer;
+    window.addEventListener("resize", function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        applyDeviceClass();
+      }, 150);
+    });
+  }
+
   function getLastSeenBuild() {
     try {
-      return sessionStorage.getItem(VERSION_STORAGE_KEY);
+      return sessionStorage.getItem(getVersionStorageKey());
     } catch (_) {
       return null;
     }
@@ -750,10 +816,11 @@
 
   function setLastSeenBuild(build) {
     try {
+      const key = getVersionStorageKey();
       if (build) {
-        sessionStorage.setItem(VERSION_STORAGE_KEY, build);
+        sessionStorage.setItem(key, build);
       } else {
-        sessionStorage.removeItem(VERSION_STORAGE_KEY);
+        sessionStorage.removeItem(key);
       }
     } catch (_) {
       /* ignore quota / private mode */
@@ -780,6 +847,7 @@
     const lastSeen = getLastSeenBuild();
     if (newBuild === lastSeen) return;
 
+    updateVersionBannerCopy();
     state.pendingBuild = newBuild;
     els.versionBanner.hidden = false;
     els.versionBanner.classList.add("version-banner--visible");
@@ -880,6 +948,7 @@
 
   function init() {
     initElements();
+    initDeviceDetection();
     bindEvents();
     updatePointsUI();
     warnIfConfigMissing();
