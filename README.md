@@ -1,28 +1,42 @@
-# Recensioni Trash
+﻿# Recensioni Trash
 
 App statica per raccogliere e visualizzare recensioni trash, pubblicata su GitHub Pages.
 
 ## Setup
 
-### 1. GitHub Pages
+### 1. GitHub Pages (GitHub Actions)
 
 Nel repository **Recensioni-trash**:
 
 1. Vai su **Settings → Pages**
-2. Source: branch **main**, cartella **/ (root)**
+2. **Build and deployment → Source**: seleziona **GitHub Actions** (non più “Deploy from a branch”)
 3. Salva
+
+Il sito viene pubblicato dal workflow **Deploy GitHub Pages** (`.github/workflows/deploy-pages.yml`) a ogni push su `main`.
 
 L'app sarà disponibile su: **https://adangelo1996-eng.github.io/Recensioni-trash/**
 
-### 2. Permessi GitHub Actions
+### 2. Secret `SUBMIT_TOKEN` (obbligatorio per il deploy)
+
+Il token **non** va committato. In produzione viene iniettato in `js/config.js` durante il deploy.
+
+1. Vai su **Settings → Secrets and variables → Actions → New repository secret**
+2. Nome: **`SUBMIT_TOKEN`**
+3. Valore: un **fine-grained PAT** con permesso **Actions: Read and write** solo sul repo **Recensioni-trash**
+
+Vedi il passo 4 per creare il PAT.
+
+> **Token esposto in passato:** se un token è mai stato committato in git, **revocalo/ruotalo subito** su GitHub (**Settings → Developer settings → Personal access tokens**) e usa solo il nuovo token in `SUBMIT_TOKEN`.
+
+### 3. Permessi GitHub Actions
 
 1. Vai su **Settings → Actions → General**
 2. In **Workflow permissions**, seleziona **Read and write permissions**
 3. Salva
 
-Questo permette al workflow di committare le nuove recensioni su `data/reviews.json`.
+Questo permette al workflow **Submit Review** di committare le nuove recensioni su `data/reviews.json`.
 
-### 3. Fine-grained Personal Access Token (PAT)
+### 4. Fine-grained Personal Access Token (PAT)
 
 Crea un token con accesso limitato al solo repository **Recensioni-trash**:
 
@@ -30,17 +44,17 @@ Crea un token con accesso limitato al solo repository **Recensioni-trash**:
 2. **Generate new token**
 3. Repository access: **Only select repositories** → seleziona **Recensioni-trash**
 4. Permissions → **Actions**: **Read and write**
-5. Genera e copia il token
+5. Genera e copia il token → incollalo nel secret **`SUBMIT_TOKEN`** (passo 2)
 
-### 4. Configurazione locale
+### 5. Configurazione locale
 
 ```bash
 cp js/config.example.js js/config.js
 ```
 
-Apri `js/config.js` e sostituisci `YOUR_FINE_GRAINED_PAT_HERE` con il token creato al passo 3.
+Apri `js/config.js` e sostituisci `YOUR_FINE_GRAINED_PAT_HERE` con il token creato al passo 4.
 
-> **Nota:** `js/config.js` è in `.gitignore` e non va committato.
+> **Nota:** `js/config.js` è in `.gitignore` e **non** va committato. In Pages il file viene generato dal workflow di deploy.
 
 ## Sicurezza del token
 

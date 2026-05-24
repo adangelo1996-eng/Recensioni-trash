@@ -1,0 +1,53 @@
+﻿name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate js/config.js
+        env:
+          SUBMIT_TOKEN: ${{ secrets.SUBMIT_TOKEN }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const token = process.env.SUBMIT_TOKEN || '';
+          if (!token) {
+            console.error('SUBMIT_TOKEN secret is not set. Add it in Settings → Secrets → Actions.');
+            process.exit(1);
+          }
+          const content = `window.CONFIG = {
+  owner: 'adangelo1996-eng',
+  repo: 'Recensioni-trash',
+  token: ${JSON.stringify(token)},
+};
+`;
+          fs.writeFileSync('js/config.js', content);
+          NODE
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
