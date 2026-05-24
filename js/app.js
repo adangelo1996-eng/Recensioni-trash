@@ -577,7 +577,7 @@
     if (isLocalDev()) {
       return (
         "js/config.js mancante. Copia js/config.example.js in js/config.js " +
-        "e sostituisci YOUR_TOKEN_HERE con un fine-grained PAT (Actions: Read and write)."
+        "e sostituisci YOUR_TOKEN_HERE con un fine-grained PAT (Contents: Read and write + Metadata: Read sul repo)."
       );
     }
 
@@ -623,7 +623,7 @@
       method: "POST",
       headers: {
         Accept: "application/vnd.github.v3+json",
-        Authorization: "token " + config.token,
+        Authorization: "Bearer " + config.token,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -639,6 +639,16 @@
         if (errorBody.message) detail = errorBody.message;
       } catch (_) {
         /* ignore parse errors */
+      }
+      if (
+        response.status === 403 &&
+        detail.indexOf("Resource not accessible by personal access token") !== -1
+      ) {
+        throw new Error(
+          detail +
+            " — Il PAT in SUBMIT_TOKEN non ha Contents: Read and write (e Metadata: Read) sul repo. " +
+            "Vedi README, sezione Fine-grained PAT, poi rigenera il token e rilancia Deploy GitHub Pages."
+        );
       }
       throw new Error(detail);
     }

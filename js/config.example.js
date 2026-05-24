@@ -4,6 +4,7 @@
   token: 'YOUR_TOKEN_HERE',
 };
 
-// Local dev: copy this file to js/config.js and paste your PAT.
+// Local dev: copy this file to js/config.js and paste your PAT
+// (fine-grained: Contents Read and write + Metadata Read on Recensioni-trash only).
 // Production (GitHub Pages): js/config.js is generated at deploy time from the
 // repository secret SUBMIT_TOKEN by .github/workflows/deploy-pages.yml — do not commit js/config.js.

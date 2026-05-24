@@ -22,9 +22,11 @@ Il token **non** va committato. In produzione viene iniettato in `js/config.js` 
 
 1. Vai su **Settings → Secrets and variables → Actions → New repository secret**
 2. Nome: **`SUBMIT_TOKEN`**
-3. Valore: un **fine-grained PAT** con permesso **Actions: Read and write** solo sul repo **Recensioni-trash**
+3. Valore: un **fine-grained PAT** con i permessi elencati al passo 4 (solo sul repo **Recensioni-trash**)
 
 Vedi il passo 4 per creare il PAT.
+
+> **Errore "Resource not accessible by personal access token":** il PAT nel secret ha permessi sbagliati (spesso solo **Actions**). Per `repository_dispatch` servono **Contents** + **Metadata**, non Actions. Rigenera il PAT come al passo 4 e aggiorna `SUBMIT_TOKEN`.
 
 > **Token esposto in passato:** se un token è mai stato committato in git, **revocalo/ruotalo subito** su GitHub (**Settings → Developer settings → Personal access tokens**) e usa solo il nuovo token in `SUBMIT_TOKEN`.
 
@@ -38,13 +40,23 @@ Questo permette al workflow **Submit Review** di committare le nuove recensioni 
 
 ### 4. Fine-grained Personal Access Token (PAT)
 
+L'invio recensioni usa l'API [`POST /repos/{owner}/{repo}/dispatches`](https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event) (`repository_dispatch`). Con un fine-grained PAT servono permessi sul **codice del repository**, non su Actions.
+
 Crea un token con accesso limitato al solo repository **Recensioni-trash**:
 
 1. GitHub → **Settings → Developer settings → Personal access tokens → Fine-grained tokens**
 2. **Generate new token**
 3. Repository access: **Only select repositories** → seleziona **Recensioni-trash**
-4. Permissions → **Actions**: **Read and write**
-5. Genera e copia il token → incollalo nel secret **`SUBMIT_TOKEN`** (passo 2)
+4. **Repository permissions** (valori esatti nella UI GitHub):
+   | Permesso | Livello richiesto |
+   |----------|-------------------|
+   | **Contents** | **Read and write** |
+   | **Metadata** | **Read** (si seleziona spesso in automatico con Contents) |
+5. **Non** basta **Actions: Read and write** da solo: provoca l'errore *Resource not accessible by personal access token*.
+6. Genera e copia il token → incollalo nel secret **`SUBMIT_TOKEN`** (passo 2)
+7. Rilancia il deploy: **Actions → Deploy GitHub Pages → Run workflow** (o push su `main`)
+
+**Alternativa (classic PAT):** token con scope **`repo`** (o **`public_repo`** se il repository è pubblico). Incolla il valore in `SUBMIT_TOKEN` come sopra.
 
 ### 5. Configurazione locale
 
@@ -60,7 +72,7 @@ Apri `js/config.js` e sostituisci `YOUR_TOKEN_HERE` con il token creato al passo
 
 Il token viene usato dal frontend per inviare recensioni tramite l'API `repository_dispatch` di GitHub. Essendo incluso in un file JavaScript servito da GitHub Pages, **chiunque visiti il sito può potenzialmente estrarlo** (DevTools → Sources/Network).
 
-Per un progetto personale/amici va bene; per uso pubblico valuta alternative server-side o limita i permessi del token al minimo (solo Actions read/write su questo repo).
+Per un progetto personale/amici va bene; per uso pubblico valuta alternative server-side. Il PAT espone **Contents** sul repo (necessario per `repository_dispatch`); non concedere permessi su altri repository.
 
 ## Flusso di invio recensione
 
