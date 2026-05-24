@@ -10,6 +10,23 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <aside id="version-banner" class="version-banner" hidden role="alert" aria-live="polite">
+    <div class="version-banner__inner">
+      <p class="version-banner__text">
+        <span class="version-banner__emoji" aria-hidden="true">🚮</span>
+        C'è una versione nuova, baby! Gianna ha fatto upgrade al posto.
+      </p>
+      <div class="version-banner__actions">
+        <button type="button" id="version-banner-refresh" class="btn version-banner__refresh">
+          Aggiorna tutto
+        </button>
+        <button type="button" id="version-banner-dismiss" class="version-banner__dismiss" aria-label="Chiudi avviso">
+          ×
+        </button>
+      </div>
+    </div>
+  </aside>
+
   <header class="hero">
     <h1 class="hero__title">Questa casa non è un albergo</h1>
     <p class="hero__subtitle">

@@ -24,6 +24,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Write version.json
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          DEPLOYED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          printf '{"build":"%s","deployedAt":"%s"}\n' "$SHORT_SHA" "$DEPLOYED_AT" > version.json
+          cat version.json
+
       - name: Generate js/config.js
         env:
           SUBMIT_TOKEN: ${{ secrets.SUBMIT_TOKEN }}

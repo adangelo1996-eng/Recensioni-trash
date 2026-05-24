@@ -39,6 +39,8 @@
     hospitality: 0,
     reviews: [],
     isSubmitting: false,
+    loadedBuild: null,
+    pendingBuild: null,
   };
 
   const els = {};
@@ -66,6 +68,9 @@
     els.trashModalMessage = $("trash-modal-message");
     els.trashModalScores = $("trash-modal-scores");
     els.trashModalOk = $("trash-modal-ok");
+    els.versionBanner = $("version-banner");
+    els.versionBannerRefresh = $("version-banner-refresh");
+    els.versionBannerDismiss = $("version-banner-dismiss");
 
     POINT_FIELDS.forEach(function (field) {
       els[field + "Value"] = $(field + "-value");
@@ -735,6 +740,114 @@
     }
   }
 
+  function getLastSeenBuild() {
+    try {
+      return sessionStorage.getItem(VERSION_STORAGE_KEY);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setLastSeenBuild(build) {
+    try {
+      if (build) {
+        sessionStorage.setItem(VERSION_STORAGE_KEY, build);
+      } else {
+        sessionStorage.removeItem(VERSION_STORAGE_KEY);
+      }
+    } catch (_) {
+      /* ignore quota / private mode */
+    }
+  }
+
+  async function fetchDeployedVersion() {
+    try {
+      const response = await fetch("./version.json?t=" + Date.now(), {
+        cache: "no-store",
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data && data.build ? String(data.build) : null;
+    } catch (err) {
+      console.debug("version.json non disponibile:", err);
+      return null;
+    }
+  }
+
+  function showVersionBanner(newBuild) {
+    if (!els.versionBanner || !newBuild) return;
+
+    const lastSeen = getLastSeenBuild();
+    if (newBuild === lastSeen) return;
+
+    state.pendingBuild = newBuild;
+    els.versionBanner.hidden = false;
+    els.versionBanner.classList.add("version-banner--visible");
+    document.body.classList.add("version-banner-open");
+  }
+
+  function hideVersionBanner(markSeen) {
+    if (!els.versionBanner) return;
+
+    if (markSeen && state.pendingBuild) {
+      setLastSeenBuild(state.pendingBuild);
+    }
+
+    els.versionBanner.classList.remove("version-banner--visible");
+    els.versionBanner.hidden = true;
+    document.body.classList.remove("version-banner-open");
+  }
+
+  async function checkForNewVersion() {
+    const remoteBuild = await fetchDeployedVersion();
+    if (!remoteBuild || !state.loadedBuild) return;
+
+    if (remoteBuild !== state.loadedBuild) {
+      showVersionBanner(remoteBuild);
+    }
+  }
+
+  async function hardRefreshApp() {
+    const buildToMark = state.pendingBuild || state.loadedBuild;
+    setLastSeenBuild(buildToMark);
+
+    if ("caches" in window) {
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(function (key) {
+          return caches.delete(key);
+        }));
+      } catch (err) {
+        console.debug("Cache clear skipped:", err);
+      }
+    }
+
+    const basePath = location.pathname || "/";
+    const hash = location.hash || "";
+    window.location.href = basePath + "?v=" + Date.now() + hash;
+  }
+
+  async function initVersionCheck() {
+    const build = await fetchDeployedVersion();
+    if (!build) return;
+
+    state.loadedBuild = build;
+
+    await checkForNewVersion();
+
+    setInterval(checkForNewVersion, VERSION_POLL_MS);
+    window.addEventListener("focus", checkForNewVersion);
+  }
+
+  function bindVersionBannerEvents() {
+    if (!els.versionBanner) return;
+
+    els.versionBannerRefresh.addEventListener("click", hardRefreshApp);
+    els.versionBannerDismiss.addEventListener("click", function () {
+      hideVersionBanner(true);
+    });
+  }
+
   function bindModalEvents() {
     els.trashModalOk.addEventListener("click", hideTrashModal);
     els.trashModal.querySelector(".trash-modal__close").addEventListener("click", hideTrashModal);
@@ -762,6 +875,7 @@
     });
     els.form.addEventListener("submit", handleSubmit);
     bindModalEvents();
+    bindVersionBannerEvents();
   }
 
   function init() {
@@ -770,6 +884,7 @@
     updatePointsUI();
     warnIfConfigMissing();
     loadReviews();
+    initVersionCheck();
   }
 
   if (document.readyState === "loading") {
