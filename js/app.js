@@ -564,9 +564,35 @@
     }
   }
 
+  function isLocalDev() {
+    const host = location.hostname;
+    return host === "localhost" || host === "127.0.0.1" || location.protocol === "file:";
+  }
+
+  function getConfigErrorMessage() {
+    if (typeof window.CONFIG !== "undefined") {
+      return null;
+    }
+
+    if (isLocalDev()) {
+      return (
+        "js/config.js mancante. Copia js/config.example.js in js/config.js " +
+        "e sostituisci YOUR_TOKEN_HERE con un fine-grained PAT (Actions: Read and write)."
+      );
+    }
+
+    return (
+      "js/config.js non disponibile sul sito live. " +
+      "Di solito significa che il deploy GitHub Actions è fallito o manca il secret SUBMIT_TOKEN. " +
+      "Vai su GitHub: Settings -> Secrets -> Actions (SUBMIT_TOKEN), poi controlla che " +
+      "Settings -> Pages usi GitHub Actions come sorgente e rilancia il workflow Deploy GitHub Pages."
+    );
+  }
+
   function getConfig() {
-    if (typeof window.CONFIG === "undefined") {
-      throw new Error("CONFIG non trovato. Assicurati che js/config.js sia caricato.");
+    const configError = getConfigErrorMessage();
+    if (configError) {
+      throw new Error(configError);
     }
 
     const config = window.CONFIG;
@@ -574,11 +600,19 @@
       throw new Error("CONFIG incompleto: servono owner, repo e token.");
     }
 
-    if (config.token === "YOUR_TOKEN_HERE") {
+    if (config.token === "YOUR_TOKEN_HERE" || config.token === "YOUR_FINE_GRAINED_PAT_HERE") {
       throw new Error("Configura il token in js/config.js prima di inviare recensioni.");
     }
 
     return config;
+  }
+
+  function warnIfConfigMissing() {
+    const configError = getConfigErrorMessage();
+    if (!configError) return;
+
+    showFormMessage(configError, "error");
+    els.submitBtn.disabled = true;
   }
 
   async function submitReview(payload) {
@@ -655,7 +689,7 @@
       }, RELOAD_DELAY_MS);
     } catch (err) {
       console.error("Errore invio recensione:", err);
-      showFormMessage("Errore nell'invio: " + err.message + ". Controlla config e riprova.", "error");
+      showFormMessage("Errore nell'invio: " + err.message, "error");
     } finally {
       state.isSubmitting = false;
       updateSubmitState();
@@ -695,6 +729,7 @@
     initElements();
     bindEvents();
     updatePointsUI();
+    warnIfConfigMissing();
     loadReviews();
   }
 

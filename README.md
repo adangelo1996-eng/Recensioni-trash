@@ -52,7 +52,7 @@ Crea un token con accesso limitato al solo repository **Recensioni-trash**:
 cp js/config.example.js js/config.js
 ```
 
-Apri `js/config.js` e sostituisci `YOUR_FINE_GRAINED_PAT_HERE` con il token creato al passo 4.
+Apri `js/config.js` e sostituisci `YOUR_TOKEN_HERE` con il token creato al passo 4.
 
 > **Nota:** `js/config.js` è in `.gitignore` e **non** va committato. In Pages il file viene generato dal workflow di deploy.
 
