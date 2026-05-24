@@ -16,5 +16,13 @@
     "guide": 3,
     "hospitality": 4,
     "comment": "auth header test"
+  },
+  {
+    "id": "e82f59ff-9462-42a7-8400-1ea0b6c6c431",
+    "createdAt": "2026-05-24T20:45:15.292Z",
+    "trashName": "provare",
+    "food": 3,
+    "guide": 3,
+    "hospitality": 4
   }
 ]
