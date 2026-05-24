@@ -24,5 +24,13 @@
     "food": 3,
     "guide": 3,
     "hospitality": 4
+  },
+  {
+    "id": "5745f76f-3ea7-4d68-8490-5dd93f219974",
+    "createdAt": "2026-05-24T20:48:56.873Z",
+    "trashName": "provare",
+    "food": 5,
+    "guide": 5,
+    "hospitality": 0
   }
 ]
