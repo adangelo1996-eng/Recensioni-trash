@@ -7,5 +7,14 @@
     "guide": 3,
     "hospitality": 3,
     "comment": "API permission test"
+  },
+  {
+    "id": "d438af2f-fd89-440e-b777-2d8f156bf38c",
+    "createdAt": "2026-05-24T20:34:45.077Z",
+    "trashName": "Local token auth test",
+    "food": 3,
+    "guide": 3,
+    "hospitality": 4,
+    "comment": "auth header test"
   }
 ]
