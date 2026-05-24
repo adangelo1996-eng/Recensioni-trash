@@ -577,7 +577,7 @@
     if (isLocalDev()) {
       return (
         "js/config.js mancante. Copia js/config.example.js in js/config.js " +
-        "e sostituisci YOUR_TOKEN_HERE con un fine-grained PAT (Contents: Read and write + Metadata: Read sul repo)."
+        "e sostituisci YOUR_TOKEN_HERE con un classic PAT (scope public_repo) o fine-grained PAT (Contents Read and write + Metadata Read sul repo)."
       );
     }
 
@@ -622,9 +622,10 @@
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        Accept: "application/vnd.github.v3+json",
+        Accept: "application/vnd.github+json",
         Authorization: "Bearer " + config.token,
         "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
       },
       body: JSON.stringify({
         event_type: "new-review",
@@ -646,8 +647,10 @@
       ) {
         throw new Error(
           detail +
-            " — Il PAT in SUBMIT_TOKEN non ha Contents: Read and write (e Metadata: Read) sul repo. " +
-            "Vedi README, sezione Fine-grained PAT, poi rigenera il token e rilancia Deploy GitHub Pages."
+            " — Il PAT in SUBMIT_TOKEN non può chiamare repository_dispatch. " +
+            "Soluzione consigliata: classic PAT con scope public_repo. " +
+            "Alternativa: fine-grained PAT con Contents Read and write + Metadata Read su Recensioni-trash. " +
+            "Aggiorna il secret SUBMIT_TOKEN e rilancia Deploy GitHub Pages (vedi README)."
         );
       }
       throw new Error(detail);

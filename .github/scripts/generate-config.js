@@ -11,7 +11,7 @@ if (!token) {
   console.error("Add it in GitHub: Settings -> Secrets and variables -> Actions");
   console.error("Secret name: SUBMIT_TOKEN");
   console.error(
-    "Value: fine-grained PAT with Contents Read and write + Metadata Read on Recensioni-trash"
+    "Value: classic PAT with public_repo scope (recommended), or fine-grained PAT with Contents Read and write + Metadata Read on Recensioni-trash"
   );
   process.exit(1);
 }

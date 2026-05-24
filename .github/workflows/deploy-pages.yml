@@ -29,6 +29,11 @@ jobs:
           SUBMIT_TOKEN: ${{ secrets.SUBMIT_TOKEN }}
         run: node .github/scripts/generate-config.js
 
+      - name: Validate SUBMIT_TOKEN (repository_dispatch)
+        env:
+          SUBMIT_TOKEN: ${{ secrets.SUBMIT_TOKEN }}
+        run: node .github/scripts/validate-submit-token.js
+
       - name: Verify js/config.js
         run: test -f js/config.js && grep -q "window.CONFIG" js/config.js
 
