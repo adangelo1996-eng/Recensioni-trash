@@ -32,5 +32,14 @@
     "food": 5,
     "guide": 5,
     "hospitality": 0
+  },
+  {
+    "id": "bc5b7afc-ed5f-41e9-b6b3-200168ba2f08",
+    "createdAt": "2026-05-24T20:50:16.800Z",
+    "trashName": "sdfsd",
+    "food": 5,
+    "guide": 5,
+    "hospitality": 0,
+    "comment": "sdassad"
   }
 ]
