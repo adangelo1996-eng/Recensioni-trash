@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": "76ed1f06-ed08-4227-af32-7440d736cf48",
+    "createdAt": "2026-05-24T20:33:45.185Z",
+    "trashName": "Test PAT",
+    "food": 4,
+    "guide": 3,
+    "hospitality": 3,
+    "comment": "API permission test"
+  }
+]
