@@ -7,6 +7,30 @@
 
   const POINT_FIELDS = ["food", "guide", "hospitality"];
 
+  const CATEGORIES = {
+    food: {
+      label: "Cibo",
+      emoji: "🍟",
+      unit: function (n) {
+        return n === 1 ? "patatina fritta" : "patatine fritte";
+      },
+    },
+    guide: {
+      label: "Gianna",
+      emoji: "🚗",
+      unit: function () {
+        return "Gianna";
+      },
+    },
+    hospitality: {
+      label: "Ospitalità",
+      emoji: "🧻",
+      unit: function (n) {
+        return n === 1 ? "rotolo" : "rotoli";
+      },
+    },
+  };
+
   const state = {
     food: 0,
     guide: 0,
@@ -34,10 +58,289 @@
     els.statGuide = $("stat-guide");
     els.statHospitality = $("stat-hospitality");
     els.statTotal = $("stat-total");
+    els.trashModal = $("trash-modal");
+    els.trashModalEmoji = $("trash-modal-emoji");
+    els.trashModalTitle = $("trash-modal-title");
+    els.trashModalMessage = $("trash-modal-message");
+    els.trashModalScores = $("trash-modal-scores");
+    els.trashModalOk = $("trash-modal-ok");
 
     POINT_FIELDS.forEach(function (field) {
       els[field + "Value"] = $(field + "-value");
     });
+  }
+
+  function formatCategoryScore(field, value, options) {
+    const category = CATEGORIES[field];
+    const rounded = Math.round(value);
+    const dominantClass = options && options.dominant ? " trash-modal__score--dominant" : "";
+    const scoreClass = "review-card__score review-card__score--" + field;
+
+    if (options && options.modal) {
+      return (
+        '<span class="trash-modal__score' +
+        dominantClass +
+        '">' +
+        category.emoji +
+        " " +
+        category.label +
+        ": " +
+        value +
+        "</span>"
+      );
+    }
+
+    return (
+      '<span class="' +
+      scoreClass +
+      '" title="' +
+      category.label +
+      '">' +
+      category.emoji +
+      " " +
+      value +
+      " " +
+      category.unit(rounded) +
+      "</span>"
+    );
+  }
+
+  function formatStatAverage(field, value) {
+    if (value === null || value === undefined || isNaN(value)) return "—";
+    const category = CATEGORIES[field];
+    const formatted = value.toFixed(1);
+    return formatted + " " + category.unit(Math.round(value));
+  }
+
+  function getScoreTier(score) {
+    if (score <= 1) return "bad";
+    if (score <= 3) return "meh";
+    return "legendary";
+  }
+
+  function getDominantFields(scores) {
+    const max = Math.max(scores.food, scores.guide, scores.hospitality);
+    return POINT_FIELDS.filter(function (field) {
+      return scores[field] === max;
+    });
+  }
+
+  function pickRandom(items) {
+    return items[Math.floor(Math.random() * items.length)];
+  }
+
+  function getTrashPopupContent(scores) {
+    const food = scores.food;
+    const guide = scores.guide;
+    const hospitality = scores.hospitality;
+    const dominant = getDominantFields(scores);
+    const isBalanced = dominant.length === 3 || (dominant.length > 1 && food === guide && guide === hospitality);
+
+    if (guide >= 4 && hospitality <= 1) {
+      return {
+        emoji: "🚗💨",
+        title: "Gianna al massimo, ospitalità fantasma",
+        message: pickRandom([
+          "Hai dato tutto a Gianna e zero rotoli. Tipico: ti porta in giro ma poi ti lascia senza carta igienica. Benvenuto nel trash.",
+          "5 punti Gianna, ospitalità da motel abbandonato. Lei frena in curva, tu cerchi il bagno. Esperienza autentica.",
+          "Gianna leggendaria, ospitalità inesistente. Probabilmente ha parcheggiato sul marciapiede e ha rubato l'ultimo rotolo.",
+        ]),
+      };
+    }
+
+    if (food >= 4 && hospitality <= 1) {
+      return {
+        emoji: "🍟🧻",
+        title: "Cibo da dio, ospitalità da carcere",
+        message: pickRandom([
+          "Patatine al top, rotoli a zero. Hai mangiato bene ma ti sei pulito con una foglia. Classico.",
+          "Massimo cibo, minimo comfort. Le patatine erano calde, la carta igienica era un ricordo lontano.",
+        ]),
+      };
+    }
+
+    if (hospitality >= 4 && guide <= 1) {
+      return {
+        emoji: "🧻🛋️",
+        title: "Ospitalità regale, Gianna in ferie",
+        message: pickRandom([
+          "Rotoli ovunque ma Gianna non si è fatta vedere. Casa pulita, guida assente. Sei rimasto a piedi ma almeno c'era il bidet.",
+          "Ospitalità da hotel a 5 stelle, Gianna da 0. Ti hanno dato la carta igienica ma non la chiavi della macchina.",
+        ]),
+      };
+    }
+
+    if (food >= 4 && guide <= 1) {
+      return {
+        emoji: "🍟😴",
+        title: "Cibo sì, Gianna no",
+        message: pickRandom([
+          "Hai votato le patatine e dimenticato Gianna. Capita: quando mangi bene, chi ha bisogno di uscire?",
+          "Tutto sul cibo, zero guida. Sei venuto per mangiare, non per girare. Onestà trash pura.",
+        ]),
+      };
+    }
+
+    if (isBalanced) {
+      return {
+        emoji: "⚖️💩",
+        title: "Recensione equilibrata",
+        message: pickRandom([
+          "Hai spartito i punti con la precisione di un contabile del trash. Né favore, né vendetta. Rispetto.",
+          "Bilanciato come una dieta a base di patatine e rotoli. Niente eccessi, tutto nella norma trash.",
+          "Distribuzione democratica dei 10 punti. La democrazia funziona, anche qui.",
+        ]),
+      };
+    }
+
+    if (dominant.length === 1 && dominant[0] === "food") {
+      const tier = getScoreTier(food);
+      if (tier === "legendary") {
+        return {
+          emoji: "🍟👑",
+          title: "Dominio assoluto del Cibo",
+          message: pickRandom([
+            "Hai messo tutto sul cibo. Sei venuto qui per le patatine e non ti penti. Leggenda trash.",
+            "Cibo al massimo. Gianna e l'ospitalità possono aspettare — le patatine no.",
+            "La tua recensione urla: PATATINE. Messaggio ricevuto, chef del trash.",
+          ]),
+        };
+      }
+      if (tier === "meh") {
+        return {
+          emoji: "🍟😐",
+          title: "Cibo nella media",
+          message: pickRandom([
+            "Cibo ok, niente di memorabile. Patatine decenti, niente da gridare al mondo.",
+            "Hai dato un po' di tutto ma il cibo spicca. Non male, non epico. Trash standard.",
+          ]),
+        };
+      }
+      return {
+        emoji: "🍟💀",
+        title: "Cibo dimenticato",
+        message: pickRandom([
+          "Quasi zero punti al cibo. Le patatine piangono in un angolo. Brutale.",
+          "Hai snobbato il cibo. Qui le patatine sono sacre — ricordatelo la prossima volta.",
+        ]),
+      };
+    }
+
+    if (dominant.length === 1 && dominant[0] === "guide") {
+      const tier = getScoreTier(guide);
+      if (tier === "legendary") {
+        return {
+          emoji: "🚗🔥",
+          title: "Gianna leggendaria",
+          message: pickRandom([
+            "Gianna al massimo. Probabilmente ha fatto un'inversione a U in autostrada. Tu le hai dato tutto. Giusto.",
+            "Massimo rispetto per Gianna. La guida trash che tutti meritano ma pochi hanno.",
+            "Hai votato Gianna come se fosse la tua guida personale. E forse lo è.",
+          ]),
+        };
+      }
+      if (tier === "meh") {
+        return {
+          emoji: "🚗😶",
+          title: "Gianna nella media",
+          message: pickRandom([
+            "Gianna ok, niente di folle. Qualche giro, niente acrobazie. Trash tranquillo.",
+            "Punti decenti a Gianna. Non la leggenda, non il disastro. Via di mezzo.",
+          ]),
+        };
+      }
+      return {
+        emoji: "🚗👻",
+        title: "Gianna ignorata",
+        message: pickRandom([
+          "Quasi zero a Gianna. Non l'hai nemmeno considerata. Freddo.",
+          "Gianna merita di più. O forse no — dipende da quanto ha parcheggiato male.",
+        ]),
+      };
+    }
+
+    if (dominant.length === 1 && dominant[0] === "hospitality") {
+      const tier = getScoreTier(hospitality);
+      if (tier === "legendary") {
+        return {
+          emoji: "🧻✨",
+          title: "Ospitalità leggendaria",
+          message: pickRandom([
+            "Ospitalità al top. Rotoli ovunque, casa pulita, bidet funzionante. Sei in paradiso trash.",
+            "Massimo rispetto per l'ospitalità. Qui si respira carta igienica di qualità.",
+            "Hai premiato l'ospitalità come si deve. Qualcuno finalmente apprezza i rotoli.",
+          ]),
+        };
+      }
+      if (tier === "meh") {
+        return {
+          emoji: "🧻🤷",
+          title: "Ospitalità nella media",
+          message: pickRandom([
+            "Ospitalità ok. Rotoli sufficienti, niente lusso. Trash standard.",
+            "Punti decenti all'ospitalità. Né hotel, né baracca. Giusto mezzo.",
+          ]),
+        };
+      }
+      return {
+        emoji: "🧻💀",
+        title: "Ospitalità dimenticata",
+        message: pickRandom([
+          "Quasi zero ospitalità. I rotoli piangono. Brutale ma onesto.",
+          "Hai snobbato l'ospitalità. Spero tu abbia portato la tua carta igienica.",
+        ]),
+      };
+    }
+
+    const totalTier =
+      food + guide + hospitality === 10
+        ? getScoreTier(Math.max(food, guide, hospitality))
+        : "meh";
+
+    if (totalTier === "legendary") {
+      return {
+        emoji: "💩🏆",
+        title: "Recensione trash epica",
+        message: pickRandom([
+          "Hai spartito 10 punti con stile. La community trash ti ringrazia.",
+          "Recensione inviata. Il trash ringrazia, le patatine applaudono.",
+        ]),
+      };
+    }
+
+    return {
+      emoji: "💩",
+      title: "Recensione trash registrata",
+      message: pickRandom([
+        "Il tuo verdetto è stato registrato nel registro del trash. Grazie per l'onestà brutale.",
+        "Recensione inviata. Tra poco compare in lista — se hai fretta, ricarica.",
+        "10 punti spartiti, messaggio ricevuto. Benvenuto nel club del trash.",
+      ]),
+    };
+  }
+
+  function showTrashModal(scores) {
+    const content = getTrashPopupContent(scores);
+    const dominant = getDominantFields(scores);
+
+    els.trashModalEmoji.textContent = content.emoji;
+    els.trashModalTitle.textContent = content.title;
+    els.trashModalMessage.textContent = content.message;
+    els.trashModalScores.innerHTML = POINT_FIELDS.map(function (field) {
+      return formatCategoryScore(field, scores[field], {
+        modal: true,
+        dominant: dominant.indexOf(field) !== -1,
+      });
+    }).join("");
+
+    els.trashModal.hidden = false;
+    document.body.style.overflow = "hidden";
+    els.trashModalOk.focus();
+  }
+
+  function hideTrashModal() {
+    els.trashModal.hidden = true;
+    document.body.style.overflow = "";
   }
 
   function getPointsSum() {
@@ -153,11 +456,6 @@
     return diffYear === 1 ? "1 anno fa" : diffYear + " anni fa";
   }
 
-  function formatAverage(value) {
-    if (value === null || value === undefined || isNaN(value)) return "—";
-    return value.toFixed(1);
-  }
-
   function calculateStats(reviews) {
     if (!reviews.length) {
       return { food: null, guide: null, hospitality: null, total: 0 };
@@ -185,9 +483,9 @@
 
   function renderStats(reviews) {
     const stats = calculateStats(reviews);
-    els.statFood.textContent = formatAverage(stats.food);
-    els.statGuide.textContent = formatAverage(stats.guide);
-    els.statHospitality.textContent = formatAverage(stats.hospitality);
+    els.statFood.textContent = formatStatAverage("food", stats.food);
+    els.statGuide.textContent = formatStatAverage("guide", stats.guide);
+    els.statHospitality.textContent = formatStatAverage("hospitality", stats.hospitality);
     els.statTotal.textContent = String(stats.total);
   }
 
@@ -212,9 +510,9 @@
       '<time class="review-card__date" datetime="' + escapeHtml(review.createdAt || review.date || "") + '">' + date + "</time>" +
       "</div>" +
       '<div class="review-card__scores">' +
-      '<span class="review-card__score review-card__score--food">🍟 ' + food + "</span>" +
-      '<span class="review-card__score review-card__score--guide">🚗 ' + guide + "</span>" +
-      '<span class="review-card__score review-card__score--hospitality">🧻 ' + hospitality + "</span>" +
+      formatCategoryScore("food", food) +
+      formatCategoryScore("guide", guide) +
+      formatCategoryScore("hospitality", hospitality) +
       "</div>";
 
     if (comment) {
@@ -228,7 +526,7 @@
   function renderReviews(reviews) {
     if (!reviews.length) {
       els.reviewsList.innerHTML =
-        '<p class="reviews-list__empty">Nessuna recensione trash ancora. Sii il primo a spargere il verbo (e le patatine).</p>';
+        '<p class="reviews-list__empty">Nessuna recensione trash ancora. Sii il primo a spargere il verbo.</p>';
       return;
     }
 
@@ -262,7 +560,7 @@
       state.reviews = [];
       renderStats([]);
       els.reviewsList.innerHTML =
-        '<p class="reviews-list__empty">Recensioni non disponibili al momento. Riprova tra poco, intanto vai a prendere le patatine.</p>';
+        '<p class="reviews-list__empty">Recensioni non disponibili al momento. Riprova tra poco.</p>';
     }
   }
 
@@ -336,16 +634,20 @@
       comment: els.comment.value.trim(),
     };
 
+    const submittedScores = {
+      food: payload.food,
+      guide: payload.guide,
+      hospitality: payload.hospitality,
+    };
+
     state.isSubmitting = true;
     updateSubmitState();
-    showFormMessage("Invio in corso… tieniti forte, la Clio sta partendo.", "loading");
+    showFormMessage("Invio in corso… tieniti forte, Gianna sta partendo.", "loading");
 
     try {
       await submitReview(payload);
-      showFormMessage(
-        "Recensione inviata! 🎉 Tra qualche secondo si aggiorna la lista — ricarica se hai fretta di vedere il tuo trash in evidenza.",
-        "success"
-      );
+      showFormMessage("Recensione inviata! La lista si aggiorna tra qualche secondo.", "success");
+      showTrashModal(submittedScores);
       resetForm();
 
       setTimeout(function () {
@@ -358,6 +660,18 @@
       state.isSubmitting = false;
       updateSubmitState();
     }
+  }
+
+  function bindModalEvents() {
+    els.trashModalOk.addEventListener("click", hideTrashModal);
+    els.trashModal.querySelector(".trash-modal__close").addEventListener("click", hideTrashModal);
+    els.trashModal.querySelector(".trash-modal__backdrop").addEventListener("click", hideTrashModal);
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !els.trashModal.hidden) {
+        hideTrashModal();
+      }
+    });
   }
 
   function bindEvents() {
@@ -374,6 +688,7 @@
       els.commentCount.textContent = String(els.comment.value.length);
     });
     els.form.addEventListener("submit", handleSubmit);
+    bindModalEvents();
   }
 
   function init() {

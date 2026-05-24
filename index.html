@@ -11,11 +11,10 @@
 </head>
 <body>
   <header class="hero">
-    <div class="hero__badge">🇧🇪 Benvenuti nel Belgio, baby</div>
     <h1 class="hero__title">Questa casa non è un albergo</h1>
     <p class="hero__subtitle">
       Qui non c'è reception, non c'è colazione continentale e soprattutto non c'è il tuo cugino che fa da guida turistica gratis.
-      Se sei finito qui, probabilmente stai cercando patatine fritte, una Renault Clio arancione e rotoli di carta igienica in quantità industriale.
+      Se sei finito qui, probabilmente stai cercando cibo decenti, una Gianna che ti porta in giro e un minimo di ospitalità — tipo rotoli di carta igienica in quantità industriale.
       <strong>Valuta l'esperienza trash. Con onestà brutale.</strong>
     </p>
   </header>
@@ -24,17 +23,17 @@
     <section class="stats" aria-label="Statistiche globali">
       <article class="stat-card stat-card--fries">
         <span class="stat-card__emoji" aria-hidden="true">🍟</span>
-        <p class="stat-card__label">Media patatine fritte</p>
+        <p class="stat-card__label">Media Cibo</p>
         <p class="stat-card__value" id="stat-food">—</p>
       </article>
       <article class="stat-card stat-card--clio">
         <span class="stat-card__emoji" aria-hidden="true">🚗</span>
-        <p class="stat-card__label">Media Renault Clio arancioni</p>
+        <p class="stat-card__label">Media Gianna</p>
         <p class="stat-card__value" id="stat-guide">—</p>
       </article>
       <article class="stat-card stat-card--tp">
         <span class="stat-card__emoji" aria-hidden="true">🧻</span>
-        <p class="stat-card__label">Media rotoli carta igienica</p>
+        <p class="stat-card__label">Media Ospitalità</p>
         <p class="stat-card__value" id="stat-hospitality">—</p>
       </article>
       <article class="stat-card stat-card--total">
@@ -69,36 +68,36 @@
           <div class="allocator" data-field="food">
             <div class="allocator__header">
               <span class="allocator__emoji" aria-hidden="true">🍟</span>
-              <label for="food-value">Patatine fritte</label>
+              <label for="food-value">Cibo</label>
             </div>
             <div class="allocator__controls">
-              <button type="button" class="btn btn--minus" data-action="decrement" data-target="food" aria-label="Diminuisci patatine fritte">−</button>
+              <button type="button" class="btn btn--minus" data-action="decrement" data-target="food" aria-label="Diminuisci Cibo">−</button>
               <output id="food-value" class="allocator__value" for="food">0</output>
-              <button type="button" class="btn btn--plus" data-action="increment" data-target="food" aria-label="Aumenta patatine fritte">+</button>
+              <button type="button" class="btn btn--plus" data-action="increment" data-target="food" aria-label="Aumenta Cibo">+</button>
             </div>
           </div>
 
           <div class="allocator" data-field="guide">
             <div class="allocator__header">
               <span class="allocator__emoji" aria-hidden="true">🚗</span>
-              <label for="guide-value">Renault Clio arancioni</label>
+              <label for="guide-value">Gianna</label>
             </div>
             <div class="allocator__controls">
-              <button type="button" class="btn btn--minus" data-action="decrement" data-target="guide" aria-label="Diminuisci guida Clio">−</button>
+              <button type="button" class="btn btn--minus" data-action="decrement" data-target="guide" aria-label="Diminuisci Gianna">−</button>
               <output id="guide-value" class="allocator__value" for="guide">0</output>
-              <button type="button" class="btn btn--plus" data-action="increment" data-target="guide" aria-label="Aumenta guida Clio">+</button>
+              <button type="button" class="btn btn--plus" data-action="increment" data-target="guide" aria-label="Aumenta Gianna">+</button>
             </div>
           </div>
 
           <div class="allocator" data-field="hospitality">
             <div class="allocator__header">
               <span class="allocator__emoji" aria-hidden="true">🧻</span>
-              <label for="hospitality-value">Rotoli carta igienica</label>
+              <label for="hospitality-value">Ospitalità</label>
             </div>
             <div class="allocator__controls">
-              <button type="button" class="btn btn--minus" data-action="decrement" data-target="hospitality" aria-label="Diminuisci ospitalità">−</button>
+              <button type="button" class="btn btn--minus" data-action="decrement" data-target="hospitality" aria-label="Diminuisci Ospitalità">−</button>
               <output id="hospitality-value" class="allocator__value" for="hospitality">0</output>
-              <button type="button" class="btn btn--plus" data-action="increment" data-target="hospitality" aria-label="Aumenta ospitalità">+</button>
+              <button type="button" class="btn btn--plus" data-action="increment" data-target="hospitality" aria-label="Aumenta Ospitalità">+</button>
             </div>
           </div>
         </div>
@@ -110,7 +109,7 @@
             name="comment"
             maxlength="500"
             rows="4"
-            placeholder="Racconta l'odissea. Patatine tiepide? Clio parcheggiata sul marciapiede? Carta igienica a singola ply?"
+            placeholder="Racconta l'odissea. Cibo tiepido? Gianna parcheggiata sul marciapiede? Ospitalità a singola ply?"
           ></textarea>
           <small class="field__hint"><span id="comment-count">0</span>/500 — niente romanzo, solo trash.</small>
         </div>
@@ -135,6 +134,18 @@
   <footer class="footer">
     <p>Made with 🍟, 🚗 e 🧻 — nessun albergo è stato danneggiato.</p>
   </footer>
+
+  <div id="trash-modal" class="trash-modal" hidden role="dialog" aria-labelledby="trash-modal-title" aria-modal="true">
+    <div class="trash-modal__backdrop" data-dismiss="modal"></div>
+    <div class="trash-modal__content">
+      <button type="button" class="trash-modal__close" aria-label="Chiudi popup" data-dismiss="modal">×</button>
+      <div class="trash-modal__emoji" id="trash-modal-emoji" aria-hidden="true">💩</div>
+      <h2 id="trash-modal-title" class="trash-modal__title"></h2>
+      <p id="trash-modal-message" class="trash-modal__message"></p>
+      <div id="trash-modal-scores" class="trash-modal__scores"></div>
+      <button type="button" class="btn btn--submit trash-modal__ok" id="trash-modal-ok">Ok, ho capito</button>
+    </div>
+  </div>
 
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>
