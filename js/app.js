@@ -4,6 +4,8 @@
   const TOTAL_POINTS = 10;
   const MAX_FIELD_VALUE = 5;
   const RELOAD_DELAY_MS = 4000;
+  const VERSION_STORAGE_KEY = "recensioni-trash-last-seen-build";
+  const VERSION_POLL_MS = 60000;
 
   const POINT_FIELDS = ["food", "guide", "hospitality"];
 
@@ -539,11 +541,32 @@
     els.reviewsList.innerHTML = sorted.map(renderReviewCard).join("");
   }
 
+  function getReviewsUrl() {
+    if (isLocalDev()) {
+      return "./data/reviews.json";
+    }
+
+    const config = typeof window.CONFIG !== "undefined" ? window.CONFIG : {};
+    const owner = config.owner || "adangelo1996-eng";
+    const repo = config.repo || "Recensioni-trash";
+    const branch = config.reviewsBranch || "main";
+
+    return (
+      "https://raw.githubusercontent.com/" +
+      encodeURIComponent(owner) +
+      "/" +
+      encodeURIComponent(repo) +
+      "/" +
+      encodeURIComponent(branch) +
+      "/data/reviews.json"
+    );
+  }
+
   async function loadReviews() {
     els.reviewsList.innerHTML = '<p class="reviews-list__loading">Caricamento recensioni…</p>';
 
     try {
-      const response = await fetch("./data/reviews.json?t=" + Date.now(), {
+      const response = await fetch(getReviewsUrl() + "?t=" + Date.now(), {
         cache: "no-store",
       });
 
@@ -700,6 +723,9 @@
       setTimeout(function () {
         loadReviews();
       }, RELOAD_DELAY_MS);
+      setTimeout(function () {
+        loadReviews();
+      }, RELOAD_DELAY_MS + 15000);
     } catch (err) {
       console.error("Errore invio recensione:", err);
       showFormMessage("Errore nell'invio: " + err.message, "error");
