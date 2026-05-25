@@ -985,11 +985,62 @@
   }
 
   function applyVoteCountDelta(reviewKey, upDelta, downDelta) {
-    if (!state.votes[reviewKey]) {
-      state.votes[reviewKey] = { up: 0, down: 0 };
+    const current = getVoteCounts(reviewKey);
+    const next = {
+      up: Math.max(0, current.up + upDelta),
+      down: Math.max(0, current.down + downDelta),
+    };
+
+    state.votes[reviewKey] = next;
+
+    const review = findReviewByKey(reviewKey);
+    if (review) {
+      review.upvotes = next.up;
+      review.downvotes = next.down;
     }
-    state.votes[reviewKey].up = Math.max(0, (Number(state.votes[reviewKey].up) || 0) + upDelta);
-    state.votes[reviewKey].down = Math.max(0, (Number(state.votes[reviewKey].down) || 0) + downDelta);
+  }
+
+  async function submitReviewVote(payload) {
+    const config = getConfig();
+    const url = "https://api.github.com/repos/" + config.owner + "/" + config.repo + "/dispatches";
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: "Bearer " + config.token,
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      body: JSON.stringify({
+        event_type: "review-vote",
+        client_payload: payload,
+      }),
+    });
+
+    if (!response.ok) {
+      let detail = "HTTP " + response.status;
+      try {
+        const errorBody = await response.json();
+        if (errorBody.message) detail = errorBody.message;
+      } catch (_) {
+        /* ignore parse errors */
+      }
+      throw new Error(detail);
+    }
+  }
+
+  function persistReviewVoteToServer(review, upDelta, downDelta) {
+    if (!review || !review.id || String(review.id).indexOf("local-") === 0) return;
+    if (!upDelta && !downDelta) return;
+
+    submitReviewVote({
+      reviewId: review.id,
+      upDelta: upDelta,
+      downDelta: downDelta,
+    }).catch(function (err) {
+      console.error("Errore salvataggio voto sul server:", err);
+    });
   }
 
   function handleReviewVote(reviewKey, voteType) {
@@ -1000,27 +1051,38 @@
     const previousVote = getUserVoteForReview(reviewKey);
     let calloutType = voteType;
     let weeklyDelta = 0;
+    let upDelta = 0;
+    let downDelta = 0;
 
     if (previousVote === voteType) {
-      applyVoteCountDelta(reviewKey, voteType === "up" ? -1 : 0, voteType === "down" ? -1 : 0);
+      upDelta = voteType === "up" ? -1 : 0;
+      downDelta = voteType === "down" ? -1 : 0;
+      applyVoteCountDelta(reviewKey, upDelta, downDelta);
       delete state.userVotes[reviewKey];
       calloutType = voteType;
     } else if (previousVote === "up" && voteType === "down") {
-      applyVoteCountDelta(reviewKey, -1, 1);
+      upDelta = -1;
+      downDelta = 1;
+      applyVoteCountDelta(reviewKey, upDelta, downDelta);
       state.userVotes[reviewKey] = "down";
       weeklyDelta = -1;
     } else if (previousVote === "down" && voteType === "up") {
-      applyVoteCountDelta(reviewKey, 1, -1);
+      upDelta = 1;
+      downDelta = -1;
+      applyVoteCountDelta(reviewKey, upDelta, downDelta);
       state.userVotes[reviewKey] = "up";
       weeklyDelta = 1;
     } else {
-      applyVoteCountDelta(reviewKey, voteType === "up" ? 1 : 0, voteType === "down" ? 1 : 0);
+      upDelta = voteType === "up" ? 1 : 0;
+      downDelta = voteType === "down" ? 1 : 0;
+      applyVoteCountDelta(reviewKey, upDelta, downDelta);
       state.userVotes[reviewKey] = voteType;
       if (voteType === "up") weeklyDelta = 1;
     }
 
     saveVotesToStorage();
     saveUserVotesToStorage();
+    persistReviewVoteToServer(review, upDelta, downDelta);
 
     if (authorName && weeklyDelta !== 0) {
       addAuthorWeeklyUp(authorName, weeklyDelta);
@@ -1058,13 +1120,14 @@
   function renderReviewCard(review) {
     const name = escapeHtml(review.trashName || "Anonimo trash");
     const date = formatRelativeDate(review.createdAt || review.date);
-    const food = Number(review.food) || 0;
-    const guide = Number(review.guide) || 0;
-    const hospitality = Number(review.hospitality) || 0;
+    const scores = normalizeReviewScores(review);
+    const food = scores.food;
+    const guide = scores.guide;
+    const hospitality = scores.hospitality;
     const comment = review.comment ? escapeHtml(review.comment) : "";
     const rawReviewKey = getReviewKey(review);
     const reviewKey = escapeHtml(rawReviewKey);
-    const voteCounts = getVoteCounts(rawReviewKey);
+    const voteCounts = getVoteCounts(rawReviewKey, review);
     const userVote = getUserVoteForReview(rawReviewKey);
     const netScore = voteCounts.up - voteCounts.down;
     const upActiveClass = userVote === "up" ? " review-vote--active" : "";
@@ -1174,12 +1237,19 @@
     pendingLocal.forEach(function (local) {
       const localName = (local.trashName || "").trim();
       const localTime = new Date(local.createdAt || 0).getTime();
+      let matchedRemote = null;
       const duplicate = merged.some(function (remote) {
         const remoteName = (remote.trashName || "").trim();
         const remoteTime = new Date(remote.createdAt || remote.date || 0).getTime();
-        return remoteName === localName && Math.abs(remoteTime - localTime) < 120000;
+        const isDuplicate = remoteName === localName && Math.abs(remoteTime - localTime) < 120000;
+        if (isDuplicate) matchedRemote = remote;
+        return isDuplicate;
       });
-      if (!duplicate) merged.unshift(local);
+      if (duplicate && matchedRemote) {
+        migrateVoteKeys(getReviewKey(local), getReviewKey(matchedRemote));
+      } else if (!duplicate) {
+        merged.unshift(local);
+      }
     });
 
     return merged;
@@ -1200,6 +1270,7 @@
       const data = await response.json();
       const serverReviews = Array.isArray(data) ? data : data.reviews || [];
       state.reviews = mergeServerReviews(serverReviews);
+      syncVotesFromReviews(state.reviews);
       renderStats(state.reviews);
       renderReviews(state.reviews);
     } catch (err) {
@@ -1348,6 +1419,8 @@
         food: payload.food,
         guide: payload.guide,
         hospitality: payload.hospitality,
+        upvotes: 0,
+        downvotes: 0,
         comment: payload.comment,
         createdAt: new Date().toISOString(),
       };
