@@ -423,11 +423,52 @@ body {
   color: #b71c1c;
 }
 
+/* Reviews panel — scroll + corsa */
+
+.reviews-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.reviews-panel__scroll {
+  max-height: calc(
+    var(--reviews-scroll-cards, 4) * 9.75rem + (var(--reviews-scroll-cards, 4) - 1) * 1rem
+  );
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.35rem;
+  scrollbar-gutter: stable;
+  border: 2px dashed var(--gold-fries);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(255, 248, 231, 0.65) 0%, rgba(255, 255, 255, 0.4) 100%);
+  padding: 0.75rem;
+}
+
+.reviews-panel__scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.reviews-panel__scroll::-webkit-scrollbar-track {
+  background: var(--cream);
+  border-radius: 8px;
+}
+
+.reviews-panel__scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--orange-clio) 0%, var(--gold-fries) 100%);
+  border: 2px solid var(--brown-dark);
+  border-radius: 8px;
+}
+
 /* Reviews list */
 
 .reviews-list {
   display: flex;
   flex-direction: column;
+  gap: 1rem;
+}
+
+.reviews-panel__scroll.reviews-list {
   gap: 1rem;
 }
 
@@ -440,6 +481,8 @@ body {
 }
 
 .review-card {
+  position: relative;
+  overflow: visible;
   background: #fff;
   border-radius: var(--radius);
   padding: 1rem;
@@ -505,6 +548,307 @@ body {
   font-style: italic;
   border-top: 1px dashed rgba(139, 69, 19, 0.2);
   padding-top: 0.5rem;
+}
+
+.review-card__votes {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 2px dotted rgba(255, 107, 0, 0.35);
+}
+
+.review-vote {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  padding: 0.35rem 0.75rem;
+  border: 2px solid var(--brown-dark);
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--cream);
+  color: var(--brown-dark);
+  box-shadow: 2px 2px 0 var(--brown-dark);
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.review-vote:active {
+  transform: scale(0.94);
+}
+
+.review-vote--up:hover {
+  background: var(--yellow);
+}
+
+.review-vote--down:hover {
+  background: #f5d0d0;
+}
+
+.review-vote--active {
+  box-shadow: 0 0 0 3px var(--orange-clio);
+}
+
+.review-vote--up.review-vote--active {
+  background: var(--yellow);
+}
+
+.review-vote--down.review-vote--active {
+  background: #f5d0d0;
+}
+
+.review-vote__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.review-vote__count {
+  min-width: 1.25rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+.review-card__net {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  min-width: 2.5rem;
+  text-align: center;
+  color: var(--brown-dark);
+  background: var(--white-tp);
+  border: 2px dashed var(--orange-clio);
+  border-radius: 8px;
+  padding: 0.15rem 0.5rem;
+}
+
+/* Vote speech bubble */
+
+.vote-callout {
+  position: absolute;
+  bottom: calc(100% + 0.45rem);
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: min(14rem, calc(100vw - 3rem));
+  padding: 0.55rem 0.75rem 0.65rem;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--brown-dark);
+  background: #fff;
+  border: 3px solid var(--brown-dark);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--orange-clio);
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px) scale(0.92);
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+  pointer-events: none;
+}
+
+.vote-callout::after {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: #fff;
+  border-right: 3px solid var(--brown-dark);
+  border-bottom: 3px solid var(--brown-dark);
+  transform: rotate(45deg);
+}
+
+.vote-callout--up {
+  border-color: var(--gold-fries);
+  box-shadow: 4px 4px 0 var(--gold-fries);
+}
+
+.vote-callout--down {
+  border-color: #b22222;
+  box-shadow: 4px 4px 0 #b22222;
+}
+
+.vote-callout--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* Corsa trash leaderboard */
+
+.corsa-trash {
+  background: linear-gradient(180deg, #1a1208 0%, var(--brown-dark) 35%, #2c1810 100%);
+  border: 4px solid var(--yellow);
+  border-radius: var(--radius);
+  padding: 1rem 1rem 1.15rem;
+  box-shadow: 6px 6px 0 var(--brown-dark), inset 0 0 0 2px rgba(255, 215, 0, 0.25);
+}
+
+.corsa-trash__title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  color: var(--yellow);
+  margin: 0 0 0.25rem;
+  text-align: center;
+  text-shadow: 2px 2px 0 #000;
+  letter-spacing: 0.04em;
+}
+
+.corsa-trash__hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--cream);
+  opacity: 0.9;
+}
+
+.corsa-trash__hint strong {
+  color: var(--yellow);
+}
+
+.corsa-trash__status {
+  margin: 0 0 0.85rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.78rem;
+  text-align: center;
+  color: var(--brown-dark);
+  background: var(--yellow);
+  border: 2px solid var(--orange-clio);
+  border-radius: 8px;
+  line-height: 1.35;
+}
+
+.corsa-trash__lane--winner .corsa-trash__lane-track {
+  box-shadow: 0 0 0 2px var(--yellow), inset 0 0 12px rgba(255, 215, 0, 0.35);
+}
+
+.corsa-trash__track {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.corsa-trash__empty {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--cream);
+  font-style: italic;
+  padding: 0.5rem 0.25rem;
+}
+
+.corsa-trash__lane {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 28%) 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.corsa-trash__lane-label {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  line-height: 1.15;
+  color: var(--yellow);
+  text-shadow: 1px 1px 0 #000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.corsa-trash__lane-track {
+  position: relative;
+  height: 2.35rem;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 215, 0, 0.45);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.06) 0,
+      rgba(255, 255, 255, 0.06) 8px,
+      transparent 8px,
+      transparent 16px
+    ),
+    linear-gradient(90deg, #3d2914 0%, #5c3d1e 50%, #3d2914 100%);
+  overflow: hidden;
+}
+
+.corsa-trash__lane-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 107, 0, 0.15) 100%);
+  pointer-events: none;
+}
+
+.corsa-trash__lane--1 .corsa-trash__lane-track {
+  border-color: var(--gold-fries);
+}
+
+.corsa-trash__lane--2 .corsa-trash__lane-track {
+  border-color: var(--orange-clio);
+}
+
+.corsa-trash__lane--3 .corsa-trash__lane-track {
+  border-color: var(--white-tp);
+}
+
+.corsa-trash__racer {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  transition: left 0.45s cubic-bezier(0.34, 1.2, 0.64, 1);
+  z-index: 2;
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.5));
+}
+
+.corsa-trash__racer-icon {
+  font-size: 1.65rem;
+  line-height: 1;
+  animation: corsa-trash-bounce 0.6s ease-in-out infinite alternate;
+}
+
+.corsa-trash__racer-votes {
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: var(--cream);
+  background: var(--brown-dark);
+  border: 1px solid var(--yellow);
+  border-radius: 4px;
+  padding: 0.05rem 0.25rem;
+  white-space: nowrap;
+}
+
+@keyframes corsa-trash-bounce {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-3px);
+  }
+}
+
+@media (min-width: 600px) {
+  .corsa-trash__lane-label {
+    font-size: 0.9rem;
+  }
+
+  .corsa-trash__lane-track {
+    height: 2.65rem;
+  }
+
+  .corsa-trash__racer-icon {
+    font-size: 1.85rem;
+  }
 }
 
 /* Footer */

@@ -6,6 +6,14 @@
   const RELOAD_DELAY_MS = 4000;
   const VERSION_STORAGE_KEY_MOBILE = "recensioni-trash-last-seen-build-mobile";
   const VERSION_STORAGE_KEY_DESKTOP = "recensioni-trash-last-seen-build-desktop";
+  const VOTES_STORAGE_KEY = "recensioni-trash-review-votes";
+  const USER_VOTES_STORAGE_KEY = "recensioni-trash-user-votes";
+  const CORSA_RACE_STORAGE_KEY = "recensioni-trash-corsa-race";
+  const CORSA_GOAL_UPVOTES = 20;
+  const REVIEWS_SCROLL_MAX_CARDS = 4;
+  const REVIEW_CARD_ESTIMATE_REM = 9.75;
+  const REVIEW_LIST_GAP_REM = 1;
+  const CORSA_TRASH_ICONS = ["🍟", "🚗", "🧻", "💩", "🚮", "🛢️", "🥡", "📦"];
   const VERSION_POLL_MS = 60000;
   const DEVICE_BREAKPOINT_PX = 768;
   const DEVICE_NARROW_TOUCH_PX = 1024;
@@ -41,11 +49,76 @@
     },
   };
 
+  const UPVOTE_CALLOUT_MESSAGES = [
+    "Sì! Il trash approva questo voto.",
+    "Upvote registrato. Gianna fa un inchino.",
+    "Hai alzato il pollice marcio. Grazie, eroe.",
+    "Patatine calde per te. Voto positivo.",
+    "Così si fa. La community trash esulta.",
+    "Un su in più. Il bidet è orgoglioso.",
+    "Voto trash positivo. Nessun albergo coinvolto.",
+    "Hai spinto verso l'alto. Letteralmente.",
+    "Applauso da bidet. Upvote ricevuto.",
+    "Il cestino ti ringrazia con affetto.",
+    "Su su su! Ancora più in alto nel ranking.",
+    "Voto caldo come le patatine di ieri.",
+    "Hai votato come un vero intenditore del marcio.",
+    "Upvote! Rotoli di gioia (metaforici).",
+    "Gianna accelera per festeggiare il tuo su.",
+    "Trash positivo. Il mondo è un po' meno pulito.",
+    "Hai dato gas al recensore. Benzina trash.",
+    "Su registrato. Non dire che non ti diverti.",
+    "Voto epico. Quasi meritano un rotolo in più.",
+    "Hai alzato la media del caos. Bravissimo.",
+    "Upvote lanciato come un sacchetto nel vento.",
+    "Il punteggio sale. La fiera trash applaude.",
+    "Sì sì sì! Ancora un po' e vince la corsa.",
+    "Hai votato con la mano che non usi per pulire.",
+    "Su trash confermato. Ora vai a mangiare patatine.",
+    "Voto positivo. La Clio non frena il tuo entusiasmo.",
+    "Hai messo un like al marcio. Rispetto.",
+    "Upvote! Sei il DJ della classifica trash.",
+  ];
+
+  const DOWNVOTE_CALLOUT_MESSAGES = [
+    "Giù. Il trash sospira ma registra tutto.",
+    "Downvote. Gianna ti guarda male nello specchietto.",
+    "Hai abbassato il pollice. Freddo ma onesto.",
+    "Voto negativo. Le patatine si raffreddano.",
+    "Giù giù giù. La corsa si complica per loro.",
+    "Downvote trash. Nessun dramma, solo verità.",
+    "Hai schiacciato il voto. Come un mozzicone.",
+    "Giù registrato. Il bidet non commenta.",
+    "Voto basso. Forse meritavano più rotoli.",
+    "Down! Il cestino ha visto di peggio.",
+    "Hai tirato giù il morale (e il punteggio).",
+    "Giù. Anche il marcio ha i suoi detrattori.",
+    "Downvote lanciato. Spero tu sia sicuro.",
+    "Hai votato contro. Coraggioso, o incosciente.",
+    "Giù. La fiera trash fischia un po'.",
+    "Voto negativo. Gianna fa retromarcia simbolica.",
+    "Down. Non è personale, è trash.",
+    "Hai abbassato la media. Brutale ma lecito.",
+    "Giù registrato. Il mondo è un po' più cinico.",
+    "Downvote! Il recensore piange nel cestino.",
+    "Hai dato un no marcio. Messaggio ricevuto.",
+    "Giù. Quasi sento il rumore del punteggio che cade.",
+    "Voto negativo. Rotoli insufficienti, forse.",
+    "Down. Il trash accetta anche le critiche.",
+    "Hai premuto giù come il pedale della Clio in panne.",
+    "Downvote trash. Niente rancore, solo numeri.",
+    "Giù. La corsa si ferma un attimo per loro.",
+    "Hai votato contro con stile da giudice severo.",
+  ];
+
   const state = {
     food: 0,
     guide: 0,
     hospitality: 0,
     reviews: [],
+    votes: {},
+    userVotes: {},
+    race: null,
     isSubmitting: false,
     loadedBuild: null,
     pendingBuild: null,
@@ -67,6 +140,9 @@
     els.submitBtn = $("submit-btn");
     els.formMessage = $("form-message");
     els.reviewsList = $("reviews-list");
+    els.corsaTrash = $("corsa-trash");
+    els.corsaTrashStatus = $("corsa-trash-status");
+    els.corsaTrashTrack = $("corsa-trash-track");
     els.statFood = $("stat-food");
     els.statGuide = $("stat-guide");
     els.statHospitality = $("stat-hospitality");
@@ -330,7 +406,7 @@
       title: "Recensione trash registrata",
       message: pickRandom([
         "Il tuo verdetto è stato registrato nel registro del trash. Grazie per l'onestà brutale.",
-        "Recensione inviata. Tra poco compare in lista — se hai fretta, ricarica.",
+        "Recensione inviata. Compare subito in lista — niente refresh.",
         "10 punti spartiti, messaggio ricevuto. Benvenuto nel club del trash.",
       ]),
     };
@@ -512,6 +588,422 @@
     return div.innerHTML;
   }
 
+  function loadVotesFromStorage() {
+    try {
+      const raw = localStorage.getItem(VOTES_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveVotesToStorage() {
+    try {
+      localStorage.setItem(VOTES_STORAGE_KEY, JSON.stringify(state.votes));
+    } catch (err) {
+      console.debug("Salvataggio voti non disponibile:", err);
+    }
+  }
+
+  function loadUserVotesFromStorage() {
+    try {
+      const raw = localStorage.getItem(USER_VOTES_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      if (!parsed || typeof parsed !== "object") return {};
+      const cleaned = {};
+      Object.keys(parsed).forEach(function (key) {
+        if (parsed[key] === "up" || parsed[key] === "down") {
+          cleaned[key] = parsed[key];
+        }
+      });
+      return cleaned;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveUserVotesToStorage() {
+    try {
+      localStorage.setItem(USER_VOTES_STORAGE_KEY, JSON.stringify(state.userVotes));
+    } catch (err) {
+      console.debug("Salvataggio voti utente non disponibile:", err);
+    }
+  }
+
+  function getIsoWeekId(date) {
+    const d = date ? new Date(date) : new Date();
+    if (isNaN(d.getTime())) return "unknown";
+
+    const utc = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const day = utc.getUTCDay() || 7;
+    utc.setUTCDate(utc.getUTCDate() + 4 - day);
+    const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil(((utc - yearStart) / 86400000 + 1) / 7);
+    return utc.getUTCFullYear() + "-W" + String(weekNo).padStart(2, "0");
+  }
+
+  function createEmptyRaceState(weekId) {
+    return {
+      weekId: weekId,
+      authors: {},
+      winner: null,
+      lastWinner: null,
+      lastWinWeek: null,
+    };
+  }
+
+  function loadRaceState() {
+    try {
+      const raw = localStorage.getItem(CORSA_RACE_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed || typeof parsed !== "object") {
+        return createEmptyRaceState(getIsoWeekId());
+      }
+      return {
+        weekId: parsed.weekId || getIsoWeekId(),
+        authors: parsed.authors && typeof parsed.authors === "object" ? parsed.authors : {},
+        winner: parsed.winner || null,
+        lastWinner: parsed.lastWinner || null,
+        lastWinWeek: parsed.lastWinWeek || null,
+      };
+    } catch (_) {
+      return createEmptyRaceState(getIsoWeekId());
+    }
+  }
+
+  function saveRaceState() {
+    try {
+      localStorage.setItem(CORSA_RACE_STORAGE_KEY, JSON.stringify(state.race));
+    } catch (err) {
+      console.debug("Salvataggio corsa non disponibile:", err);
+    }
+  }
+
+  function ensureCurrentRaceWeek() {
+    const currentWeek = getIsoWeekId();
+    if (!state.race) {
+      state.race = createEmptyRaceState(currentWeek);
+      return;
+    }
+
+    if (state.race.weekId !== currentWeek) {
+      state.race = createEmptyRaceState(currentWeek);
+      saveRaceState();
+    }
+  }
+
+  function getAuthorDisplayName(review) {
+    return (review.trashName || "Anonimo trash").trim() || "Anonimo trash";
+  }
+
+  function getAuthorWeeklyUp(authorName) {
+    ensureCurrentRaceWeek();
+    const entry = state.race.authors[authorName];
+    return entry ? Math.max(0, Number(entry.weeklyUp) || 0) : 0;
+  }
+
+  function addAuthorWeeklyUp(authorName, delta) {
+    if (!authorName || !delta) return;
+    ensureCurrentRaceWeek();
+    if (!state.race.authors[authorName]) {
+      state.race.authors[authorName] = { weeklyUp: 0 };
+    }
+    const next = Math.max(0, getAuthorWeeklyUp(authorName) + delta);
+    state.race.authors[authorName].weeklyUp = next;
+    saveRaceState();
+    return next;
+  }
+
+  function resetCorsaRaceBoard() {
+    ensureCurrentRaceWeek();
+    const weekId = state.race.weekId;
+    const lastWinner = state.race.lastWinner;
+    const lastWinWeek = state.race.lastWinWeek;
+
+    state.race = {
+      weekId: weekId,
+      authors: {},
+      winner: null,
+      lastWinner: lastWinner || null,
+      lastWinWeek: lastWinWeek || null,
+    };
+    saveRaceState();
+  }
+
+  function checkRaceWinAfterUpvote(authorName) {
+    const weeklyUp = getAuthorWeeklyUp(authorName);
+    if (weeklyUp < CORSA_GOAL_UPVOTES) return null;
+
+    state.race.winner = authorName;
+    state.race.lastWinner = authorName;
+    state.race.lastWinWeek = state.race.weekId;
+    saveRaceState();
+    resetCorsaRaceBoard();
+    return authorName;
+  }
+
+  function getUniqueAuthorsFromReviews(reviews) {
+    const names = {};
+    reviews.forEach(function (review) {
+      const name = getAuthorDisplayName(review);
+      names[name] = true;
+    });
+    return Object.keys(names).sort(function (a, b) {
+      return a.localeCompare(b, "it");
+    });
+  }
+
+  function getUserVoteForReview(reviewKey) {
+    const vote = state.userVotes[reviewKey];
+    return vote === "up" || vote === "down" ? vote : null;
+  }
+
+  function getReviewKey(review) {
+    if (review.id) return String(review.id);
+    return String(review.createdAt || review.date || "") + "|" + String(review.trashName || "");
+  }
+
+  function getVoteCounts(reviewKey) {
+    const entry = state.votes[reviewKey];
+    if (!entry) return { up: 0, down: 0 };
+    return {
+      up: Math.max(0, Number(entry.up) || 0),
+      down: Math.max(0, Number(entry.down) || 0),
+    };
+  }
+
+  function applyReviewsScrollHeight() {
+    if (!els.reviewsList) return;
+    const maxHeightRem =
+      REVIEWS_SCROLL_MAX_CARDS * REVIEW_CARD_ESTIMATE_REM +
+      (REVIEWS_SCROLL_MAX_CARDS - 1) * REVIEW_LIST_GAP_REM;
+    els.reviewsList.style.maxHeight = maxHeightRem + "rem";
+  }
+
+  function renderCorsaTrashStatus(reviews) {
+    if (!els.corsaTrashStatus) return;
+
+    ensureCurrentRaceWeek();
+    const weekId = state.race.weekId;
+    let message = "";
+
+    if (state.race.lastWinner && state.race.lastWinWeek === weekId) {
+      message =
+        "🏆 " +
+        state.race.lastWinner +
+        " ha vinto la corsa (" +
+        CORSA_GOAL_UPVOTES +
+        " su)! Nuova heat — tutti ripartono dalla linea.";
+    } else if (reviews.length) {
+      message = "Settimana " + weekId + " — meta: " + CORSA_GOAL_UPVOTES + " su. Zero su = partenza a sinistra.";
+    }
+
+    if (message) {
+      els.corsaTrashStatus.hidden = false;
+      els.corsaTrashStatus.textContent = message;
+    } else {
+      els.corsaTrashStatus.hidden = true;
+      els.corsaTrashStatus.textContent = "";
+    }
+  }
+
+  function getRacerPositionStyle(weeklyUp) {
+    const progress = Math.min(100, Math.round((weeklyUp / CORSA_GOAL_UPVOTES) * 100));
+    if (progress <= 0) {
+      return "left: 0; transform: translate(0, -50%);";
+    }
+    return "left: " + progress + "%; transform: translate(-50%, -50%);";
+  }
+
+  function renderCorsaTrash(reviews) {
+    if (!els.corsaTrash || !els.corsaTrashTrack) return;
+
+    ensureCurrentRaceWeek();
+
+    if (!reviews.length) {
+      els.corsaTrash.hidden = true;
+      els.corsaTrashTrack.innerHTML = "";
+      if (els.corsaTrashStatus) {
+        els.corsaTrashStatus.hidden = true;
+      }
+      return;
+    }
+
+    const authorNames = getUniqueAuthorsFromReviews(reviews);
+    const racers = authorNames
+      .map(function (name) {
+        return { name: name, weeklyUp: getAuthorWeeklyUp(name) };
+      })
+      .sort(function (a, b) {
+        if (b.weeklyUp !== a.weeklyUp) return b.weeklyUp - a.weeklyUp;
+        return a.name.localeCompare(b.name, "it");
+      });
+
+    els.corsaTrash.hidden = false;
+    renderCorsaTrashStatus(reviews);
+
+    els.corsaTrashTrack.innerHTML = racers
+      .map(function (racer, index) {
+        const icon = CORSA_TRASH_ICONS[index % CORSA_TRASH_ICONS.length];
+        const progress = Math.min(100, Math.round((racer.weeklyUp / CORSA_GOAL_UPVOTES) * 100));
+        const laneClass =
+          "corsa-trash__lane corsa-trash__lane--" +
+          ((index % 6) + 1) +
+          (racer.weeklyUp >= CORSA_GOAL_UPVOTES ? " corsa-trash__lane--winner" : "");
+        const racerStyle = getRacerPositionStyle(racer.weeklyUp);
+
+        return (
+          '<div class="' +
+          laneClass +
+          '" role="listitem">' +
+          '<span class="corsa-trash__lane-label" title="' +
+          escapeHtml(racer.name) +
+          '">' +
+          escapeHtml(racer.name) +
+          "</span>" +
+          '<div class="corsa-trash__lane-track" aria-hidden="true">' +
+          '<div class="corsa-trash__lane-fill" style="width: ' +
+          progress +
+          '%;"></div>' +
+          '<div class="corsa-trash__racer" style="' +
+          racerStyle +
+          '">' +
+          '<span class="corsa-trash__racer-icon" aria-hidden="true">' +
+          icon +
+          "</span>" +
+          '<span class="corsa-trash__racer-votes">' +
+          racer.weeklyUp +
+          "/" +
+          CORSA_GOAL_UPVOTES +
+          " su</span>" +
+          "</div>" +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
+  function findReviewCardElement(reviewKey) {
+    if (!els.reviewsList || !reviewKey) return null;
+
+    const cards = els.reviewsList.querySelectorAll(".review-card[data-review-key]");
+    for (let i = 0; i < cards.length; i++) {
+      if (cards[i].getAttribute("data-review-key") === reviewKey) {
+        return cards[i];
+      }
+    }
+    return null;
+  }
+
+  function showVoteCallout(cardEl, type) {
+    if (!cardEl) return;
+
+    const pool = type === "up" ? UPVOTE_CALLOUT_MESSAGES : DOWNVOTE_CALLOUT_MESSAGES;
+    const message = pickRandom(pool);
+    const anchor = cardEl.querySelector(".review-card__votes") || cardEl;
+    const existing = anchor.querySelector(".vote-callout");
+    if (existing) existing.remove();
+
+    const bubble = document.createElement("div");
+    bubble.className = "vote-callout vote-callout--" + type;
+    bubble.setAttribute("role", "status");
+    bubble.setAttribute("aria-live", "polite");
+    bubble.textContent = message;
+    anchor.appendChild(bubble);
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        bubble.classList.add("vote-callout--visible");
+      });
+    });
+
+    window.setTimeout(function () {
+      bubble.classList.remove("vote-callout--visible");
+      window.setTimeout(function () {
+        if (bubble.parentNode) bubble.remove();
+      }, 280);
+    }, 2200);
+  }
+
+  function findReviewByKey(reviewKey) {
+    return state.reviews.find(function (review) {
+      return getReviewKey(review) === reviewKey;
+    });
+  }
+
+  function applyVoteCountDelta(reviewKey, upDelta, downDelta) {
+    if (!state.votes[reviewKey]) {
+      state.votes[reviewKey] = { up: 0, down: 0 };
+    }
+    state.votes[reviewKey].up = Math.max(0, (Number(state.votes[reviewKey].up) || 0) + upDelta);
+    state.votes[reviewKey].down = Math.max(0, (Number(state.votes[reviewKey].down) || 0) + downDelta);
+  }
+
+  function handleReviewVote(reviewKey, voteType) {
+    if (!reviewKey || (voteType !== "up" && voteType !== "down")) return;
+
+    const review = findReviewByKey(reviewKey);
+    const authorName = review ? getAuthorDisplayName(review) : null;
+    const previousVote = getUserVoteForReview(reviewKey);
+    let calloutType = voteType;
+    let weeklyDelta = 0;
+
+    if (previousVote === voteType) {
+      applyVoteCountDelta(reviewKey, voteType === "up" ? -1 : 0, voteType === "down" ? -1 : 0);
+      delete state.userVotes[reviewKey];
+      calloutType = voteType;
+    } else if (previousVote === "up" && voteType === "down") {
+      applyVoteCountDelta(reviewKey, -1, 1);
+      state.userVotes[reviewKey] = "down";
+      weeklyDelta = -1;
+    } else if (previousVote === "down" && voteType === "up") {
+      applyVoteCountDelta(reviewKey, 1, -1);
+      state.userVotes[reviewKey] = "up";
+      weeklyDelta = 1;
+    } else {
+      applyVoteCountDelta(reviewKey, voteType === "up" ? 1 : 0, voteType === "down" ? 1 : 0);
+      state.userVotes[reviewKey] = voteType;
+      if (voteType === "up") weeklyDelta = 1;
+    }
+
+    saveVotesToStorage();
+    saveUserVotesToStorage();
+
+    if (authorName && weeklyDelta !== 0) {
+      addAuthorWeeklyUp(authorName, weeklyDelta);
+      if (weeklyDelta > 0) {
+        const winner = checkRaceWinAfterUpvote(authorName);
+        if (winner) {
+          showFormMessage(
+            winner + " ha raggiunto " + CORSA_GOAL_UPVOTES + " su questa settimana! Corsa resettata — i voti restano.",
+            "success"
+          );
+        }
+      }
+    }
+
+    renderReviews(state.reviews);
+    showVoteCallout(findReviewCardElement(reviewKey), calloutType);
+  }
+
+  function bindReviewsVoteEvents() {
+    if (!els.reviewsList || els.reviewsList._votesBound) return;
+
+    els.reviewsList.addEventListener("click", function (event) {
+      const btn = event.target.closest("[data-vote]");
+      if (!btn || !els.reviewsList.contains(btn)) return;
+
+      const reviewKey = btn.getAttribute("data-review-key");
+      const voteType = btn.getAttribute("data-vote");
+
+      handleReviewVote(reviewKey, voteType);
+    });
+
+    els.reviewsList._votesBound = true;
+  }
+
   function renderReviewCard(review) {
     const name = escapeHtml(review.trashName || "Anonimo trash");
     const date = formatRelativeDate(review.createdAt || review.date);
@@ -519,9 +1011,18 @@
     const guide = Number(review.guide) || 0;
     const hospitality = Number(review.hospitality) || 0;
     const comment = review.comment ? escapeHtml(review.comment) : "";
+    const rawReviewKey = getReviewKey(review);
+    const reviewKey = escapeHtml(rawReviewKey);
+    const voteCounts = getVoteCounts(rawReviewKey);
+    const userVote = getUserVoteForReview(rawReviewKey);
+    const netScore = voteCounts.up - voteCounts.down;
+    const upActiveClass = userVote === "up" ? " review-vote--active" : "";
+    const downActiveClass = userVote === "down" ? " review-vote--active" : "";
 
     let html =
-      '<article class="review-card">' +
+      '<article class="review-card" data-review-key="' +
+      reviewKey +
+      '">' +
       '<div class="review-card__header">' +
       '<h3 class="review-card__name">' + name + "</h3>" +
       '<time class="review-card__date" datetime="' + escapeHtml(review.createdAt || review.date || "") + '">' + date + "</time>" +
@@ -536,14 +1037,49 @@
       html += '<p class="review-card__comment">"' + comment + '"</p>';
     }
 
+    html +=
+      '<div class="review-card__votes">' +
+      '<button type="button" class="review-vote review-vote--up' +
+      upActiveClass +
+      '" data-vote="up" data-review-key="' +
+      reviewKey +
+      '" aria-label="Upvote recensione" aria-pressed="' +
+      (userVote === "up" ? "true" : "false") +
+      '">' +
+      '<span class="review-vote__icon" aria-hidden="true">👍</span>' +
+      '<span class="review-vote__count">' +
+      voteCounts.up +
+      "</span>" +
+      "</button>" +
+      '<span class="review-card__net" title="Punteggio netto (su − giù)">' +
+      (netScore > 0 ? "+" : "") +
+      netScore +
+      "</span>" +
+      '<button type="button" class="review-vote review-vote--down' +
+      downActiveClass +
+      '" data-vote="down" data-review-key="' +
+      reviewKey +
+      '" aria-label="Downvote recensione" aria-pressed="' +
+      (userVote === "down" ? "true" : "false") +
+      '">' +
+      '<span class="review-vote__icon" aria-hidden="true">👎</span>' +
+      '<span class="review-vote__count">' +
+      voteCounts.down +
+      "</span>" +
+      "</button>" +
+      "</div>";
+
     html += "</article>";
     return html;
   }
 
   function renderReviews(reviews) {
+    applyReviewsScrollHeight();
+
     if (!reviews.length) {
       els.reviewsList.innerHTML =
         '<p class="reviews-list__empty">Nessuna recensione trash ancora. Sii il primo a spargere il verbo.</p>';
+      renderCorsaTrash([]);
       return;
     }
 
@@ -554,6 +1090,7 @@
     });
 
     els.reviewsList.innerHTML = sorted.map(renderReviewCard).join("");
+    renderCorsaTrash(reviews);
   }
 
   function getReviewsUrl() {
@@ -577,6 +1114,26 @@
     );
   }
 
+  function mergeServerReviews(serverReviews) {
+    const merged = Array.isArray(serverReviews) ? serverReviews.slice() : [];
+    const pendingLocal = state.reviews.filter(function (review) {
+      return String(review.id || "").indexOf("local-") === 0;
+    });
+
+    pendingLocal.forEach(function (local) {
+      const localName = (local.trashName || "").trim();
+      const localTime = new Date(local.createdAt || 0).getTime();
+      const duplicate = merged.some(function (remote) {
+        const remoteName = (remote.trashName || "").trim();
+        const remoteTime = new Date(remote.createdAt || remote.date || 0).getTime();
+        return remoteName === localName && Math.abs(remoteTime - localTime) < 120000;
+      });
+      if (!duplicate) merged.unshift(local);
+    });
+
+    return merged;
+  }
+
   async function loadReviews() {
     els.reviewsList.innerHTML = '<p class="reviews-list__loading">Caricamento recensioni…</p>';
 
@@ -590,7 +1147,8 @@
       }
 
       const data = await response.json();
-      state.reviews = Array.isArray(data) ? data : data.reviews || [];
+      const serverReviews = Array.isArray(data) ? data : data.reviews || [];
+      state.reviews = mergeServerReviews(serverReviews);
       renderStats(state.reviews);
       renderReviews(state.reviews);
     } catch (err) {
@@ -599,6 +1157,7 @@
       renderStats([]);
       els.reviewsList.innerHTML =
         '<p class="reviews-list__empty">Recensioni non disponibili al momento. Riprova tra poco.</p>';
+      renderCorsaTrash([]);
     }
   }
 
@@ -731,7 +1290,22 @@
 
     try {
       await submitReview(payload);
-      showFormMessage("Recensione inviata! La lista si aggiorna tra qualche secondo.", "success");
+
+      const optimisticReview = {
+        id: "local-" + Date.now(),
+        trashName: payload.trashName,
+        food: payload.food,
+        guide: payload.guide,
+        hospitality: payload.hospitality,
+        comment: payload.comment,
+        createdAt: new Date().toISOString(),
+      };
+
+      state.reviews.unshift(optimisticReview);
+      renderStats(state.reviews);
+      renderReviews(state.reviews);
+
+      showFormMessage("Recensione inviata! Compare subito in lista.", "success");
       showTrashModal(submittedScores);
       resetForm();
 
@@ -948,8 +1522,13 @@
 
   function init() {
     initElements();
+    state.votes = loadVotesFromStorage();
+    state.userVotes = loadUserVotesFromStorage();
+    state.race = loadRaceState();
+    ensureCurrentRaceWeek();
     initDeviceDetection();
     bindEvents();
+    bindReviewsVoteEvents();
     updatePointsUI();
     warnIfConfigMissing();
     loadReviews();
