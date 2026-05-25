@@ -588,6 +588,14 @@
     return div.innerHTML;
   }
 
+  function normalizeReviewScores(review) {
+    return {
+      food: Math.max(0, Number(review.food) || 0),
+      guide: Math.max(0, Number(review.guide) || 0),
+      hospitality: Math.max(0, Number(review.hospitality) || 0),
+    };
+  }
+
   function loadVotesFromStorage() {
     try {
       const raw = localStorage.getItem(VOTES_STORAGE_KEY);
@@ -764,13 +772,56 @@
     return String(review.createdAt || review.date || "") + "|" + String(review.trashName || "");
   }
 
-  function getVoteCounts(reviewKey) {
+  function getVoteCounts(reviewKey, review) {
+    const reviewObj = review || findReviewByKey(reviewKey);
+
+    if (reviewObj && (reviewObj.upvotes !== undefined || reviewObj.downvotes !== undefined)) {
+      return {
+        up: Math.max(0, Number(reviewObj.upvotes) || 0),
+        down: Math.max(0, Number(reviewObj.downvotes) || 0),
+      };
+    }
+
     const entry = state.votes[reviewKey];
     if (!entry) return { up: 0, down: 0 };
     return {
       up: Math.max(0, Number(entry.up) || 0),
       down: Math.max(0, Number(entry.down) || 0),
     };
+  }
+
+  function syncVotesFromReviews(reviews) {
+    reviews.forEach(function (review) {
+      if (String(review.id || "").indexOf("local-") === 0) return;
+
+      const key = getReviewKey(review);
+      const counts = {
+        up: Math.max(0, Number(review.upvotes) || 0),
+        down: Math.max(0, Number(review.downvotes) || 0),
+      };
+
+      state.votes[key] = counts;
+    });
+    saveVotesToStorage();
+  }
+
+  function migrateVoteKeys(oldKey, newKey) {
+    if (!oldKey || !newKey || oldKey === newKey) return;
+
+    if (state.votes[oldKey]) {
+      if (!state.votes[newKey]) {
+        state.votes[newKey] = state.votes[oldKey];
+      }
+      delete state.votes[oldKey];
+    }
+
+    if (state.userVotes[oldKey]) {
+      state.userVotes[newKey] = state.userVotes[oldKey];
+      delete state.userVotes[oldKey];
+    }
+
+    saveVotesToStorage();
+    saveUserVotesToStorage();
   }
 
   function applyReviewsScrollHeight() {
