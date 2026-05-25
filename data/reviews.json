@@ -33,5 +33,14 @@
     "food": 2,
     "guide": 3,
     "hospitality": 5
+  },
+  {
+    "id": "5320e8a1-1069-4618-bed9-8fd1af4f4cde",
+    "createdAt": "2026-05-25T12:46:16.015Z",
+    "trashName": "Franco, ispettore dell'asl",
+    "food": 2,
+    "guide": 5,
+    "hospitality": 3,
+    "comment": "Inizialmente invitato per cortesia, la gita si rivela una condanna ai fornelli. Grazie Gianna per avvisare continuamente dei limiti di velocità non superati"
   }
 ]
