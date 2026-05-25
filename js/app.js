@@ -6,6 +6,11 @@
   const RELOAD_DELAY_MS = 4000;
   const VERSION_STORAGE_KEY_MOBILE = "recensioni-trash-last-seen-build-mobile";
   const VERSION_STORAGE_KEY_DESKTOP = "recensioni-trash-last-seen-build-desktop";
+  const VOTES_STORAGE_KEY = "recensioni-trash-review-votes";
+  const REVIEWS_SCROLL_MAX_CARDS = 4;
+  const REVIEW_CARD_ESTIMATE_REM = 9.75;
+  const REVIEW_LIST_GAP_REM = 1;
+  const CORSA_TRASH_ICONS = ["🍟", "🚗", "🧻", "💩", "🚮", "🛢️", "🥡", "📦"];
   const VERSION_POLL_MS = 60000;
   const DEVICE_BREAKPOINT_PX = 768;
   const DEVICE_NARROW_TOUCH_PX = 1024;
@@ -41,11 +46,74 @@
     },
   };
 
+  const UPVOTE_CALLOUT_MESSAGES = [
+    "Sì! Il trash approva questo voto.",
+    "Upvote registrato. Gianna fa un inchino.",
+    "Hai alzato il pollice marcio. Grazie, eroe.",
+    "Patatine calde per te. Voto positivo.",
+    "Così si fa. La community trash esulta.",
+    "Un su in più. Il bidet è orgoglioso.",
+    "Voto trash positivo. Nessun albergo coinvolto.",
+    "Hai spinto verso l'alto. Letteralmente.",
+    "Applauso da bidet. Upvote ricevuto.",
+    "Il cestino ti ringrazia con affetto.",
+    "Su su su! Ancora più in alto nel ranking.",
+    "Voto caldo come le patatine di ieri.",
+    "Hai votato come un vero intenditore del marcio.",
+    "Upvote! Rotoli di gioia (metaforici).",
+    "Gianna accelera per festeggiare il tuo su.",
+    "Trash positivo. Il mondo è un po' meno pulito.",
+    "Hai dato gas al recensore. Benzina trash.",
+    "Su registrato. Non dire che non ti diverti.",
+    "Voto epico. Quasi meritano un rotolo in più.",
+    "Hai alzato la media del caos. Bravissimo.",
+    "Upvote lanciato come un sacchetto nel vento.",
+    "Il punteggio sale. La fiera trash applaude.",
+    "Sì sì sì! Ancora un po' e vince la corsa.",
+    "Hai votato con la mano che non usi per pulire.",
+    "Su trash confermato. Ora vai a mangiare patatine.",
+    "Voto positivo. La Clio non frena il tuo entusiasmo.",
+    "Hai messo un like al marcio. Rispetto.",
+    "Upvote! Sei il DJ della classifica trash.",
+  ];
+
+  const DOWNVOTE_CALLOUT_MESSAGES = [
+    "Giù. Il trash sospira ma registra tutto.",
+    "Downvote. Gianna ti guarda male nello specchietto.",
+    "Hai abbassato il pollice. Freddo ma onesto.",
+    "Voto negativo. Le patatine si raffreddano.",
+    "Giù giù giù. La corsa si complica per loro.",
+    "Downvote trash. Nessun dramma, solo verità.",
+    "Hai schiacciato il voto. Come un mozzicone.",
+    "Giù registrato. Il bidet non commenta.",
+    "Voto basso. Forse meritavano più rotoli.",
+    "Down! Il cestino ha visto di peggio.",
+    "Hai tirato giù il morale (e il punteggio).",
+    "Giù. Anche il marcio ha i suoi detrattori.",
+    "Downvote lanciato. Spero tu sia sicuro.",
+    "Hai votato contro. Coraggioso, o incosciente.",
+    "Giù. La fiera trash fischia un po'.",
+    "Voto negativo. Gianna fa retromarcia simbolica.",
+    "Down. Non è personale, è trash.",
+    "Hai abbassato la media. Brutale ma lecito.",
+    "Giù registrato. Il mondo è un po' più cinico.",
+    "Downvote! Il recensore piange nel cestino.",
+    "Hai dato un no marcio. Messaggio ricevuto.",
+    "Giù. Quasi sento il rumore del punteggio che cade.",
+    "Voto negativo. Rotoli insufficienti, forse.",
+    "Down. Il trash accetta anche le critiche.",
+    "Hai premuto giù come il pedale della Clio in panne.",
+    "Downvote trash. Niente rancore, solo numeri.",
+    "Giù. La corsa si ferma un attimo per loro.",
+    "Hai votato contro con stile da giudice severo.",
+  ];
+
   const state = {
     food: 0,
     guide: 0,
     hospitality: 0,
     reviews: [],
+    votes: {},
     isSubmitting: false,
     loadedBuild: null,
     pendingBuild: null,
@@ -67,6 +135,8 @@
     els.submitBtn = $("submit-btn");
     els.formMessage = $("form-message");
     els.reviewsList = $("reviews-list");
+    els.corsaTrash = $("corsa-trash");
+    els.corsaTrashTrack = $("corsa-trash-track");
     els.statFood = $("stat-food");
     els.statGuide = $("stat-guide");
     els.statHospitality = $("stat-hospitality");
@@ -512,6 +582,192 @@
     return div.innerHTML;
   }
 
+  function loadVotesFromStorage() {
+    try {
+      const raw = localStorage.getItem(VOTES_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveVotesToStorage() {
+    try {
+      localStorage.setItem(VOTES_STORAGE_KEY, JSON.stringify(state.votes));
+    } catch (err) {
+      console.debug("Salvataggio voti non disponibile:", err);
+    }
+  }
+
+  function getReviewKey(review) {
+    if (review.id) return String(review.id);
+    return String(review.createdAt || review.date || "") + "|" + String(review.trashName || "");
+  }
+
+  function getVoteCounts(reviewKey) {
+    const entry = state.votes[reviewKey];
+    if (!entry) return { up: 0, down: 0 };
+    return {
+      up: Math.max(0, Number(entry.up) || 0),
+      down: Math.max(0, Number(entry.down) || 0),
+    };
+  }
+
+  function applyReviewsScrollHeight() {
+    if (!els.reviewsList) return;
+    const maxHeightRem =
+      REVIEWS_SCROLL_MAX_CARDS * REVIEW_CARD_ESTIMATE_REM +
+      (REVIEWS_SCROLL_MAX_CARDS - 1) * REVIEW_LIST_GAP_REM;
+    els.reviewsList.style.maxHeight = maxHeightRem + "rem";
+  }
+
+  function getAuthorUpvoteTotals(reviews) {
+    const totals = {};
+
+    reviews.forEach(function (review) {
+      const author = (review.trashName || "Anonimo trash").trim() || "Anonimo trash";
+      const counts = getVoteCounts(getReviewKey(review));
+      totals[author] = (totals[author] || 0) + counts.up;
+    });
+
+    return totals;
+  }
+
+  function renderCorsaTrash(reviews) {
+    if (!els.corsaTrash || !els.corsaTrashTrack) return;
+
+    const authorTotals = getAuthorUpvoteTotals(reviews);
+    const racers = Object.keys(authorTotals)
+      .map(function (name) {
+        return { name: name, upvotes: authorTotals[name] };
+      })
+      .filter(function (r) {
+        return r.upvotes > 0;
+      })
+      .sort(function (a, b) {
+        return b.upvotes - a.upvotes;
+      });
+
+    if (!racers.length) {
+      if (reviews.length) {
+        els.corsaTrash.hidden = false;
+        els.corsaTrashTrack.innerHTML =
+          '<p class="corsa-trash__empty">Nessun su ancora. Premi 👍 sulle recensioni per far partire la corsa trash.</p>';
+      } else {
+        els.corsaTrash.hidden = true;
+        els.corsaTrashTrack.innerHTML = "";
+      }
+      return;
+    }
+
+    const maxUpvotes = Math.max.apply(
+      null,
+      racers.map(function (r) {
+        return r.upvotes;
+      })
+    );
+
+    els.corsaTrash.hidden = false;
+    els.corsaTrashTrack.innerHTML = racers
+      .map(function (racer, index) {
+        const icon = CORSA_TRASH_ICONS[index % CORSA_TRASH_ICONS.length];
+        const progress =
+          maxUpvotes > 0 ? Math.round((racer.upvotes / maxUpvotes) * 100) : 0;
+        const laneClass = "corsa-trash__lane corsa-trash__lane--" + ((index % 6) + 1);
+
+        return (
+          '<div class="' +
+          laneClass +
+          '" role="listitem">' +
+          '<span class="corsa-trash__lane-label" title="' +
+          escapeHtml(racer.name) +
+          '">' +
+          escapeHtml(racer.name) +
+          "</span>" +
+          '<div class="corsa-trash__lane-track" aria-hidden="true">' +
+          '<div class="corsa-trash__lane-fill" style="width: ' +
+          progress +
+          '%;"></div>' +
+          '<div class="corsa-trash__racer" style="left: ' +
+          progress +
+          '%;">' +
+          '<span class="corsa-trash__racer-icon" aria-hidden="true">' +
+          icon +
+          "</span>" +
+          '<span class="corsa-trash__racer-votes">' +
+          racer.upvotes +
+          " su</span>" +
+          "</div>" +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
+  function showVoteCallout(cardEl, type) {
+    if (!cardEl) return;
+
+    const pool = type === "up" ? UPVOTE_CALLOUT_MESSAGES : DOWNVOTE_CALLOUT_MESSAGES;
+    const message = pickRandom(pool);
+    const existing = cardEl.querySelector(".vote-callout");
+    if (existing) existing.remove();
+
+    const bubble = document.createElement("div");
+    bubble.className = "vote-callout vote-callout--" + type;
+    bubble.setAttribute("role", "status");
+    bubble.setAttribute("aria-live", "polite");
+    bubble.textContent = message;
+    cardEl.appendChild(bubble);
+
+    requestAnimationFrame(function () {
+      bubble.classList.add("vote-callout--visible");
+    });
+
+    window.setTimeout(function () {
+      bubble.classList.remove("vote-callout--visible");
+      window.setTimeout(function () {
+        if (bubble.parentNode) bubble.remove();
+      }, 280);
+    }, 2200);
+  }
+
+  function handleReviewVote(reviewKey, voteType, cardEl) {
+    if (!reviewKey || (voteType !== "up" && voteType !== "down")) return;
+
+    if (!state.votes[reviewKey]) {
+      state.votes[reviewKey] = { up: 0, down: 0 };
+    }
+
+    if (voteType === "up") {
+      state.votes[reviewKey].up += 1;
+    } else {
+      state.votes[reviewKey].down += 1;
+    }
+
+    saveVotesToStorage();
+    showVoteCallout(cardEl, voteType);
+    renderReviews(state.reviews);
+  }
+
+  function bindReviewsVoteEvents() {
+    if (!els.reviewsList || els.reviewsList._votesBound) return;
+
+    els.reviewsList.addEventListener("click", function (event) {
+      const btn = event.target.closest("[data-vote]");
+      if (!btn || !els.reviewsList.contains(btn)) return;
+
+      const card = btn.closest(".review-card");
+      const reviewKey = btn.getAttribute("data-review-key");
+      const voteType = btn.getAttribute("data-vote");
+
+      handleReviewVote(reviewKey, voteType, card);
+    });
+
+    els.reviewsList._votesBound = true;
+  }
+
   function renderReviewCard(review) {
     const name = escapeHtml(review.trashName || "Anonimo trash");
     const date = formatRelativeDate(review.createdAt || review.date);
@@ -519,9 +775,15 @@
     const guide = Number(review.guide) || 0;
     const hospitality = Number(review.hospitality) || 0;
     const comment = review.comment ? escapeHtml(review.comment) : "";
+    const rawReviewKey = getReviewKey(review);
+    const reviewKey = escapeHtml(rawReviewKey);
+    const voteCounts = getVoteCounts(rawReviewKey);
+    const netScore = voteCounts.up - voteCounts.down;
 
     let html =
-      '<article class="review-card">' +
+      '<article class="review-card" data-review-key="' +
+      reviewKey +
+      '">' +
       '<div class="review-card__header">' +
       '<h3 class="review-card__name">' + name + "</h3>" +
       '<time class="review-card__date" datetime="' + escapeHtml(review.createdAt || review.date || "") + '">' + date + "</time>" +
@@ -536,14 +798,41 @@
       html += '<p class="review-card__comment">"' + comment + '"</p>';
     }
 
+    html +=
+      '<div class="review-card__votes">' +
+      '<button type="button" class="review-vote review-vote--up" data-vote="up" data-review-key="' +
+      reviewKey +
+      '" aria-label="Upvote recensione">' +
+      '<span class="review-vote__icon" aria-hidden="true">👍</span>' +
+      '<span class="review-vote__count">' +
+      voteCounts.up +
+      "</span>" +
+      "</button>" +
+      '<span class="review-card__net" title="Punteggio netto (su − giù)">' +
+      (netScore > 0 ? "+" : "") +
+      netScore +
+      "</span>" +
+      '<button type="button" class="review-vote review-vote--down" data-vote="down" data-review-key="' +
+      reviewKey +
+      '" aria-label="Downvote recensione">' +
+      '<span class="review-vote__icon" aria-hidden="true">👎</span>' +
+      '<span class="review-vote__count">' +
+      voteCounts.down +
+      "</span>" +
+      "</button>" +
+      "</div>";
+
     html += "</article>";
     return html;
   }
 
   function renderReviews(reviews) {
+    applyReviewsScrollHeight();
+
     if (!reviews.length) {
       els.reviewsList.innerHTML =
         '<p class="reviews-list__empty">Nessuna recensione trash ancora. Sii il primo a spargere il verbo.</p>';
+      renderCorsaTrash([]);
       return;
     }
 
@@ -554,6 +843,7 @@
     });
 
     els.reviewsList.innerHTML = sorted.map(renderReviewCard).join("");
+    renderCorsaTrash(reviews);
   }
 
   function getReviewsUrl() {
@@ -599,6 +889,7 @@
       renderStats([]);
       els.reviewsList.innerHTML =
         '<p class="reviews-list__empty">Recensioni non disponibili al momento. Riprova tra poco.</p>';
+      renderCorsaTrash([]);
     }
   }
 
@@ -948,8 +1239,10 @@
 
   function init() {
     initElements();
+    state.votes = loadVotesFromStorage();
     initDeviceDetection();
     bindEvents();
+    bindReviewsVoteEvents();
     updatePointsUI();
     warnIfConfigMissing();
     loadReviews();
