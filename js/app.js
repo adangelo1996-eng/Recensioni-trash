@@ -1157,27 +1157,43 @@
       upActiveClass +
       '" data-vote="up" data-review-key="' +
       reviewKey +
-      '" aria-label="Upvote recensione" aria-pressed="' +
+      '" aria-label="Upvote recensione, ' +
+      voteCounts.up +
+      ' su" aria-pressed="' +
       (userVote === "up" ? "true" : "false") +
       '">' +
       '<span class="review-vote__icon" aria-hidden="true">👍</span>' +
-      '<span class="review-vote__count">' +
+      '<span class="review-vote__count" aria-hidden="true">' +
       voteCounts.up +
       "</span>" +
       "</button>" +
-      '<span class="review-card__net" title="Punteggio netto (su − giù)">' +
+      '<span class="review-card__totals" title="Punteggio netto: ' +
       (netScore > 0 ? "+" : "") +
       netScore +
+      '" aria-label="' +
+      voteCounts.up +
+      " su e " +
+      voteCounts.down +
+      ' giù">' +
+      '<span class="review-card__total review-card__total--up">👍 ' +
+      voteCounts.up +
+      "</span>" +
+      '<span class="review-card__total-sep" aria-hidden="true">·</span>' +
+      '<span class="review-card__total review-card__total--down">👎 ' +
+      voteCounts.down +
+      "</span>" +
       "</span>" +
       '<button type="button" class="review-vote review-vote--down' +
       downActiveClass +
       '" data-vote="down" data-review-key="' +
       reviewKey +
-      '" aria-label="Downvote recensione" aria-pressed="' +
+      '" aria-label="Downvote recensione, ' +
+      voteCounts.down +
+      ' giù" aria-pressed="' +
       (userVote === "down" ? "true" : "false") +
       '">' +
       '<span class="review-vote__icon" aria-hidden="true">👎</span>' +
-      '<span class="review-vote__count">' +
+      '<span class="review-vote__count" aria-hidden="true">' +
       voteCounts.down +
       "</span>" +
       "</button>" +

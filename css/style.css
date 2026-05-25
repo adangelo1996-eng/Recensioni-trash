@@ -612,16 +612,27 @@ body {
   font-weight: 700;
 }
 
-.review-card__net {
+.review-card__totals {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   font-family: var(--font-display);
-  font-size: 1.35rem;
-  min-width: 2.5rem;
-  text-align: center;
+  font-size: 1rem;
   color: var(--brown-dark);
   background: var(--white-tp);
   border: 2px dashed var(--orange-clio);
   border-radius: 8px;
-  padding: 0.15rem 0.5rem;
+  padding: 0.25rem 0.65rem;
+}
+
+.review-card__total {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.review-card__total-sep {
+  opacity: 0.55;
+  font-weight: 700;
 }
 
 /* Vote speech bubble */
