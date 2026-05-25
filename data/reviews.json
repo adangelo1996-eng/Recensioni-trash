@@ -6,6 +6,8 @@
     "food": 3,
     "guide": 4,
     "hospitality": 3,
+    "upvotes": 0,
+    "downvotes": 0,
     "comment": "GIANNA GIANNA GIANNA SOSTENEVA PARETI E ILLUSIONI\nGIANNA GIANNA GIANNA PROMETTEVA PARETI E FIUMI"
   },
   {
@@ -15,6 +17,8 @@
     "food": 2,
     "guide": 4,
     "hospitality": 4,
+    "upvotes": 0,
+    "downvotes": 0,
     "comment": "Stile gotico bramantino il migliore di sempre"
   },
   {
@@ -24,6 +28,8 @@
     "food": 2,
     "guide": 3,
     "hospitality": 5,
+    "upvotes": 0,
+    "downvotes": 0,
     "comment": "Tutto perfetto, anche Gianna in realtà!!! Il cibo invece sappiamo come sono i belga #tuttoqui?"
   },
   {
@@ -32,7 +38,9 @@
     "trashName": "Il mio nome difficile per Claudia",
     "food": 2,
     "guide": 3,
-    "hospitality": 5
+    "hospitality": 5,
+    "upvotes": 0,
+    "downvotes": 0
   },
   {
     "id": "5320e8a1-1069-4618-bed9-8fd1af4f4cde",
@@ -41,6 +49,8 @@
     "food": 2,
     "guide": 5,
     "hospitality": 3,
+    "upvotes": 0,
+    "downvotes": 0,
     "comment": "Inizialmente invitato per cortesia, la gita si rivela una condanna ai fornelli. Grazie Gianna per avvisare continuamente dei limiti di velocità non superati"
   }
 ]

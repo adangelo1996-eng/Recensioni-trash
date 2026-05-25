@@ -44,7 +44,8 @@ function validate(data) {
   const scores = {};
 
   for (const field of scoreFields) {
-    const value = data[field];
+    const raw = data[field];
+    const value = typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : raw;
     if (!Number.isInteger(value) || value < 0 || value > 5) {
       throw new Error(`${field} must be an integer between 0 and 5`);
     }
@@ -74,6 +75,8 @@ function validate(data) {
     food: scores.food,
     guide: scores.guide,
     hospitality: scores.hospitality,
+    upvotes: 0,
+    downvotes: 0,
   };
 
   if (comment) {
