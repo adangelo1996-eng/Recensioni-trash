@@ -799,8 +799,15 @@
   }
 
   function getVoteCounts(reviewKey, review) {
-    const reviewObj = review || findReviewByKey(reviewKey);
+    const entry = state.votes[reviewKey];
+    if (entry) {
+      return {
+        up: Math.max(0, Number(entry.up) || 0),
+        down: Math.max(0, Number(entry.down) || 0),
+      };
+    }
 
+    const reviewObj = review || findReviewByKey(reviewKey);
     if (reviewObj && (reviewObj.upvotes !== undefined || reviewObj.downvotes !== undefined)) {
       return {
         up: Math.max(0, Number(reviewObj.upvotes) || 0),
@@ -808,12 +815,7 @@
       };
     }
 
-    const entry = state.votes[reviewKey];
-    if (!entry) return { up: 0, down: 0 };
-    return {
-      up: Math.max(0, Number(entry.up) || 0),
-      down: Math.max(0, Number(entry.down) || 0),
-    };
+    return { up: 0, down: 0 };
   }
 
   function syncVotesFromReviews(reviews) {
@@ -1106,7 +1108,7 @@
     saveUserVotesToStorage();
     persistReviewVoteToServer(review, upDelta, downDelta);
 
-    if (authorName && voteType === "up") {
+    if (authorName && upDelta !== 0) {
       const weeklyUp = getAuthorWeeklyUp(authorName, state.reviews);
       if (weeklyUp >= CORSA_GOAL_UPVOTES) {
         const winner = checkRaceWinAfterUpvote(authorName, state.reviews);
@@ -1119,6 +1121,7 @@
       }
     }
 
+    renderCorsaTrash(state.reviews);
     renderReviews(state.reviews);
     showVoteCallout(findReviewCardElement(reviewKey), calloutType);
   }
