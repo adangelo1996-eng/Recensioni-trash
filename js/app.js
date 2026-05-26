@@ -9,7 +9,7 @@
   const VOTES_STORAGE_KEY = "recensioni-trash-review-votes";
   const USER_VOTES_STORAGE_KEY = "recensioni-trash-user-votes";
   const CORSA_RACE_STORAGE_KEY = "recensioni-trash-corsa-race";
-  const CORSA_GOAL_UPVOTES = 20;
+  const CORSA_GOAL_UPVOTES = 10;
   const REVIEWS_SCROLL_MAX_CARDS = 4;
   const REVIEW_CARD_ESTIMATE_REM = 9.75;
   const REVIEW_LIST_GAP_REM = 1;
@@ -705,33 +705,59 @@
     return (review.trashName || "Anonimo trash").trim() || "Anonimo trash";
   }
 
-  function getAuthorWeeklyUp(authorName) {
+  function getAuthorTotalUpvotes(reviews, authorName) {
+    return reviews.reduce(function (sum, review) {
+      if (getAuthorDisplayName(review) !== authorName) return sum;
+      const counts = getVoteCounts(getReviewKey(review), review);
+      return sum + counts.up;
+    }, 0);
+  }
+
+  function getAuthorBaselineUp(authorName) {
     ensureCurrentRaceWeek();
     const entry = state.race.authors[authorName];
-    return entry ? Math.max(0, Number(entry.weeklyUp) || 0) : 0;
+    if (!entry || entry.baselineUp === undefined) return 0;
+    return Math.max(0, Number(entry.baselineUp) || 0);
   }
 
-  function addAuthorWeeklyUp(authorName, delta) {
-    if (!authorName || !delta) return;
-    ensureCurrentRaceWeek();
-    if (!state.race.authors[authorName]) {
-      state.race.authors[authorName] = { weeklyUp: 0 };
-    }
-    const next = Math.max(0, getAuthorWeeklyUp(authorName) + delta);
-    state.race.authors[authorName].weeklyUp = next;
-    saveRaceState();
-    return next;
+  function getAuthorWeeklyUp(authorName, reviews) {
+    const list = reviews || state.reviews;
+    return Math.max(0, getAuthorTotalUpvotes(list, authorName) - getAuthorBaselineUp(authorName));
   }
 
-  function resetCorsaRaceBoard() {
+  function migrateRaceAuthorEntries(reviews) {
+    if (!state.race || !state.race.authors) return;
+
+    let changed = false;
+    Object.keys(state.race.authors).forEach(function (name) {
+      const entry = state.race.authors[name];
+      if (!entry || entry.baselineUp !== undefined) return;
+
+      const total = getAuthorTotalUpvotes(reviews, name);
+      const legacyWeekly = Math.max(0, Number(entry.weeklyUp) || 0);
+      entry.baselineUp = Math.max(0, total - legacyWeekly);
+      delete entry.weeklyUp;
+      changed = true;
+    });
+
+    if (changed) saveRaceState();
+  }
+
+  function resetCorsaRaceBoard(reviews) {
     ensureCurrentRaceWeek();
     const weekId = state.race.weekId;
     const lastWinner = state.race.lastWinner;
     const lastWinWeek = state.race.lastWinWeek;
+    const list = reviews || state.reviews;
+    const authors = {};
+
+    getUniqueAuthorsFromReviews(list).forEach(function (name) {
+      authors[name] = { baselineUp: getAuthorTotalUpvotes(list, name) };
+    });
 
     state.race = {
       weekId: weekId,
-      authors: {},
+      authors: authors,
       winner: null,
       lastWinner: lastWinner || null,
       lastWinWeek: lastWinWeek || null,
@@ -739,15 +765,15 @@
     saveRaceState();
   }
 
-  function checkRaceWinAfterUpvote(authorName) {
-    const weeklyUp = getAuthorWeeklyUp(authorName);
+  function checkRaceWinAfterUpvote(authorName, reviews) {
+    const weeklyUp = getAuthorWeeklyUp(authorName, reviews);
     if (weeklyUp < CORSA_GOAL_UPVOTES) return null;
 
     state.race.winner = authorName;
     state.race.lastWinner = authorName;
     state.race.lastWinWeek = state.race.weekId;
     saveRaceState();
-    resetCorsaRaceBoard();
+    resetCorsaRaceBoard(reviews);
     return authorName;
   }
 
@@ -884,7 +910,7 @@
     const authorNames = getUniqueAuthorsFromReviews(reviews);
     const racers = authorNames
       .map(function (name) {
-        return { name: name, weeklyUp: getAuthorWeeklyUp(name) };
+        return { name: name, weeklyUp: getAuthorWeeklyUp(name, reviews) };
       })
       .sort(function (a, b) {
         if (b.weeklyUp !== a.weeklyUp) return b.weeklyUp - a.weeklyUp;
@@ -1050,7 +1076,6 @@
     const authorName = review ? getAuthorDisplayName(review) : null;
     const previousVote = getUserVoteForReview(reviewKey);
     let calloutType = voteType;
-    let weeklyDelta = 0;
     let upDelta = 0;
     let downDelta = 0;
 
@@ -1065,29 +1090,26 @@
       downDelta = 1;
       applyVoteCountDelta(reviewKey, upDelta, downDelta);
       state.userVotes[reviewKey] = "down";
-      weeklyDelta = -1;
     } else if (previousVote === "down" && voteType === "up") {
       upDelta = 1;
       downDelta = -1;
       applyVoteCountDelta(reviewKey, upDelta, downDelta);
       state.userVotes[reviewKey] = "up";
-      weeklyDelta = 1;
     } else {
       upDelta = voteType === "up" ? 1 : 0;
       downDelta = voteType === "down" ? 1 : 0;
       applyVoteCountDelta(reviewKey, upDelta, downDelta);
       state.userVotes[reviewKey] = voteType;
-      if (voteType === "up") weeklyDelta = 1;
     }
 
     saveVotesToStorage();
     saveUserVotesToStorage();
     persistReviewVoteToServer(review, upDelta, downDelta);
 
-    if (authorName && weeklyDelta !== 0) {
-      addAuthorWeeklyUp(authorName, weeklyDelta);
-      if (weeklyDelta > 0) {
-        const winner = checkRaceWinAfterUpvote(authorName);
+    if (authorName && voteType === "up") {
+      const weeklyUp = getAuthorWeeklyUp(authorName, state.reviews);
+      if (weeklyUp >= CORSA_GOAL_UPVOTES) {
+        const winner = checkRaceWinAfterUpvote(authorName, state.reviews);
         if (winner) {
           showFormMessage(
             winner + " ha raggiunto " + CORSA_GOAL_UPVOTES + " su questa settimana! Corsa resettata — i voti restano.",
@@ -1287,6 +1309,7 @@
       const serverReviews = Array.isArray(data) ? data : data.reviews || [];
       state.reviews = mergeServerReviews(serverReviews);
       syncVotesFromReviews(state.reviews);
+      migrateRaceAuthorEntries(state.reviews);
       renderStats(state.reviews);
       renderReviews(state.reviews);
     } catch (err) {
